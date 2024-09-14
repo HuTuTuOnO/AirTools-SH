@@ -57,6 +57,10 @@ while IFS= read -r line; do
 done <<< "$MEDIA_CONTENT"
 
 # 提交到AirPro平台
-response=$(curl -X POST -H "Content-Type: application/json" -d "$(jq -n --arg id "$ID" --argjson platforms "$(printf '%s\n' "${unlocked_platforms[@]}" | jq -R . | jq -s .)" '{id: $id, platform: $platforms}')" "$API")
+# 使用 jq 生成 JSON body
+req_body=$(jq -n --arg id "$ID" --argjson platforms "$(printf '%s\n' "${unlocked_platforms[@]}" | jq -R . | jq -s .)" \
+  '{id: $id, platform: $platforms}')
 
-echo "流媒体状态更新结果：$response"
+# 发起 POST 请求，将解锁的平台提交到指定 API 并打印结果
+res_body=$(curl -X POST -H "Content-Type: application/json" -d "$req_body" "$API")
+echo "流媒体状态更新结果：$res_body"
