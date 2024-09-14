@@ -91,6 +91,8 @@ done
 req_body=$(jq -n --arg id "$ID" --argjson platforms "$(printf '%s\n' "${unlocked_platforms[@]}" | jq -R . | jq -s .)" \
   '{id: $id, platform: $platforms}')
 
+echo $req_body
+
 # 发起 POST 请求，将解锁的平台提交到指定 API 并打印结果
 res_body=$(curl -X POST -H "Content-Type: application/json" -d "$req_body" "$API")
 echo "流媒体状态更新结果：$res_body"
