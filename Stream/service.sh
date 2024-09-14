@@ -6,8 +6,8 @@ VER='1.0.0'
 [[ $EUID -ne 0 ]] && echo -e "错误：必须使用root用户运行此脚本！\n" && exit 1
 
 # 检查并安装 JQ 
-if ! command -v jq &> /dev/null ; then
-  echo "提示：JQ 或 BC 未安装，正在安装..."
+if ! command -v jq &> /dev/null; then
+  echo "提示：JQ 未安装，正在安装..."
   if [[ -f /etc/debian_version ]]; then
     apt-get update
     apt-get install -y jq
@@ -17,14 +17,8 @@ if ! command -v jq &> /dev/null ; then
   fi
 fi
 
-# 定义 JSON 文件路径
-CONFIG_FILE="/opt/AirPro/Stream.json"
-
-# 检查 JQ 是否存在
-if ! command -v jq &> /dev/null; then
-  echo "jq 命令未安装。请安装 JQ 后再运行脚本。"
-  exit 1
-fi
+# 定义 配置 文件路径
+CONFIG_FILE="/opt/AirPro/Stream/service.json"
 
 # 检查配置文件是否存在，如果不存在则提示用户输入并保存
 if [[ ! -f "$CONFIG_FILE" ]]; then
