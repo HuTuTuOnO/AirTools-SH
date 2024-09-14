@@ -17,23 +17,47 @@ if ! command -v jq &> /dev/null; then
   fi
 fi
 
+# 解析传入的参数
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --API)
+      API="$2"
+      shift 2
+      ;;
+    --ID)
+      ID="$2"
+      shift 2
+      ;;
+    *)
+      echo "未知参数: $1"
+      exit 1
+      ;;
+  esac
+done
+
 # 定义 配置 文件路径
 CONFIG_FILE="/opt/AirPro/Stream/service.json"
 
-# 检查配置文件是否存在，如果不存在则提示用户输入并保存
-if [[ ! -f "$CONFIG_FILE" ]]; then
-  echo "配置文件不存在，请输入以下信息："
-  read -p "请输入 API 地址: " API
-  read -p "请输入 ID: " ID
+# 检查配置文件是否存在，如果未传入API或ID且配置文件不存在，则提示用户输入
+if [[ ! -f "$CONFIG_FILE" && ( -z "$API" || -z "$ID" ) ]]; then
+  echo "配置文件不存在且未传入 --API 或 --ID，请输入以下信息："
+  [[ -z "$API" ]] && read -p "请输入 API 地址: " API
+  [[ -z "$ID" ]] && read -p "请输入 ID: " ID
 
   # 保存到配置文件中
   mkdir -p "$(dirname "$CONFIG_FILE")"  # 确保目录存在
   jq -n --arg api "$API" --arg id "$ID" '{api: $api, id: $id}' > "$CONFIG_FILE"
   echo "配置已保存到 $CONFIG_FILE"
-else
-  # 从 JSON 文件中读取 API 和 ID
-  API=$(jq -r '.api' "$CONFIG_FILE")
-  ID=$(jq -r '.id' "$CONFIG_FILE")
+elif [[ -f "$CONFIG_FILE" ]]; then
+  # 如果未传入参数，从配置文件中读取 API 和 ID
+  [[ -z "$API" ]] && API=$(jq -r '.api' "$CONFIG_FILE")
+  [[ -z "$ID" ]] && ID=$(jq -r '.id' "$CONFIG_FILE")
+fi
+
+# 确保API和ID都已定义
+if [[ -z "$API" || -z "$ID" ]]; then
+  echo "错误：未提供 API 或 ID，无法继续。"
+  exit 1
 fi
 
 # 获取流媒体解锁状态
