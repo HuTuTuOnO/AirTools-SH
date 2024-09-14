@@ -26,9 +26,9 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
   read -p "请输入 API 地址: " API
   read -p "请输入 ID: " ID
 
-  # 保存到 配置 文件中
+  # 保存到配置文件中
   mkdir -p "$(dirname "$CONFIG_FILE")"  # 确保目录存在
-  echo "{\"api\": \"$API\", \"id\": \"$ID\"}" > "$CONFIG_FILE"
+  jq -n --arg api "$API" --arg id "$ID" '{api: $api, id: $id}' > "$CONFIG_FILE"
   echo "配置已保存到 $CONFIG_FILE"
 else
   # 从 JSON 文件中读取 API 和 ID
