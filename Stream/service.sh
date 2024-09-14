@@ -56,6 +56,12 @@ while IFS= read -r line; do
   fi
 done <<< "$MEDIA_CONTENT"
 
+# 打印流媒体状态
+echo "流媒体状态："
+for platform in "${!media_status[@]}"; do
+  echo "$platform: ${media_status[$platform]}"
+done
+
 # 提交到AirPro平台
 # 使用 jq 生成 JSON body
 req_body=$(jq -n --arg id "$ID" --argjson platforms "$(printf '%s\n' "${unlocked_platforms[@]}" | jq -R . | jq -s .)" \
