@@ -59,4 +59,4 @@ done <<< "$MEDIA_CONTENT"
 # 提交到AirPro平台
 response=$(curl -X POST -H "Content-Type: application/json" -d "$(jq -n --arg id "$ID" --argjson platforms "$(printf '%s\n' "${unlocked_platforms[@]}" | jq -R . | jq -s .)" '{id: $id, platform: $platforms}')" "$API")
 
-echo "POST 请求结果：$response"
+echo "流媒体状态请求结果：$response"
