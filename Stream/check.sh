@@ -652,7 +652,7 @@ function MediaUnlockTest_BilibiliTW() {
         *) echo -n -e "\r Bilibili Taiwan Only:\t\t\t${Font_Red}Failed (Error: ${result})${Font_Suffix}\n" ;;
     esac
 }
-
+# AIRPRO转增-MediaUnlockTest_Tiktok_Region
 function MediaUnlockTest_Tiktok_Region() {
     local Ftmpresult=$(curl $useNIC --user-agent "${UA_Browser}" -s --max-time 10 "https://www.tiktok.com/")
 
@@ -4945,7 +4945,7 @@ function echo_result() {
         delay 0.03
     done
 }
-
+# AIRPRO转增-MediaUnlockTest_Tiktok_Region
 function Global_UnlockTest() {
     echo ""
     echo "============[ Multination ]============"
@@ -4963,6 +4963,7 @@ function Global_UnlockTest() {
         RegionTest_iQYI &
     )
     wait
+    # AIRPRO转增-Tiktok Region
     local array=("Dazn:" "Disney+:" "Netflix:" "YouTube Premium:" "Amazon Prime Video:" "TVBAnywhere+:" "Spotify Registration:" "Instagram Licensed Audio:" "Tiktok Region:" "OneTrust Region:" "iQyi Oversea Region:")
     echo_result ${result} ${array}
     local result=$(
