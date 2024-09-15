@@ -48,8 +48,8 @@ if [[ "$CODE" -ne 200 ]]; then
 fi
 
 # 读取解锁节点和平台信息
-NODES_JSON=$(echo "$API_RESPONSE" | jq -r '.data.node')
-PLATFORMS_JSON=$(echo "$API_RESPONSE" | jq -r '.data.platform')
+NODES_JSON=$(echo "$API_RESPONSE" | jq -r '.data.node // {}')
+PLATFORMS_JSON=$(echo "$API_RESPONSE" | jq -r '.data.platform // {}')
 
 # 初始化配置文件路径
 routes_file="/etc/soga/routes.toml"
