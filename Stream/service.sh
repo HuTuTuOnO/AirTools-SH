@@ -38,19 +38,15 @@ done
 # 定义配置文件路径
 CONFIG_FILE="/opt/AirPro/Stream/service.json"
 
-# 如果传入了参数，更新本地配置文件
+# 如果传入了 API 或 ID 参数，更新本地配置文件
 if [[ -n "$API" || -n "$ID" ]]; then
-  # 读取已有配置文件
+  # 读取已有配置文件的值（如果文件存在）
   if [[ -f "$CONFIG_FILE" ]]; then
-    API=$(jq -r '.api // empty' "$CONFIG_FILE")
-    ID=$(jq -r '.id // empty' "$CONFIG_FILE")
+    [[ -z "$API" ]] && API=$(jq -r '.api // empty' "$CONFIG_FILE")
+    [[ -z "$ID" ]] && ID=$(jq -r '.id // empty' "$CONFIG_FILE")
   fi
   
-  # 保存传入的参数
-  [[ -n "$API" ]] && API="$API"
-  [[ -n "$ID" ]] && ID="$ID"
-
-  # 保存更新后的API和ID到配置文件
+  # 保存更新后的 API 和 ID 到配置文件
   mkdir -p "$(dirname "$CONFIG_FILE")"  # 确保目录存在
   jq -n --arg api "$API" --arg id "$ID" '{api: $api, id: $id}' > "$CONFIG_FILE"
   echo "配置已更新到 $CONFIG_FILE"
