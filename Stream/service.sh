@@ -85,10 +85,10 @@ while IFS= read -r line; do
 done <<< "$MEDIA_CONTENT"
 
 # 打印流媒体状态
-echo "流媒体状态："
-for platform in "${!media_status[@]}"; do
-  echo "$platform: ${media_status[$platform]}"
-done
+# echo "流媒体状态："
+# for platform in "${!media_status[@]}"; do
+#   echo "$platform: ${media_status[$platform]}"
+# done
 
 # 提交到AirPro平台
 res_body=$(curl -X POST -H "Content-Type: application/json" -d "$(jq -n --arg id "$ID" --argjson platforms "$(printf '%s\n' "${unlocked_platforms[@]}" | jq -R . | jq -s .)" '{id: $id, platform: $platforms}')" "$API")
