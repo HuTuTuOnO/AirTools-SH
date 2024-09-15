@@ -654,7 +654,6 @@ function MediaUnlockTest_BilibiliTW() {
 }
 
 function MediaUnlockTest_Tiktok_Region() {
-    echo -n -e " Tiktok Region:\t\t\t\t\c"
     local Ftmpresult=$(curl $useNIC --user-agent "${UA_Browser}" -s --max-time 10 "https://www.tiktok.com/")
 
     if [[ "$Ftmpresult" = "curl"* ]]; then
