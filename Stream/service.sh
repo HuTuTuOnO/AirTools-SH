@@ -35,28 +35,36 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# 定义 配置 文件路径
+# 定义配置文件路径
 CONFIG_FILE="/opt/AirPro/Stream/service.json"
 
-# 检查配置文件是否存在，如果未传入API或ID且配置文件不存在，则提示用户输入
-if [[ ! -f "$CONFIG_FILE" && ( -z "$API" || -z "$ID" ) ]]; then
-  echo "配置文件不存在且未传入 --API 或 --ID，请输入以下信息："
-  [[ -z "$API" ]] && read -p "请输入 API 地址: " API
-  [[ -z "$ID" ]] && read -p "请输入 ID: " ID
+# 如果传入了参数，更新本地配置文件
+if [[ -n "$API" || -n "$ID" ]]; then
+  # 读取已有配置文件
+  if [[ -f "$CONFIG_FILE" ]]; then
+    API=$(jq -r '.api // empty' "$CONFIG_FILE")
+    ID=$(jq -r '.id // empty' "$CONFIG_FILE")
+  fi
+  
+  # 保存传入的参数
+  [[ -n "$API" ]] && API="$API"
+  [[ -n "$ID" ]] && ID="$ID"
 
-  # 保存到配置文件中
+  # 保存更新后的API和ID到配置文件
   mkdir -p "$(dirname "$CONFIG_FILE")"  # 确保目录存在
   jq -n --arg api "$API" --arg id "$ID" '{api: $api, id: $id}' > "$CONFIG_FILE"
-  echo "配置已保存到 $CONFIG_FILE"
-elif [[ -f "$CONFIG_FILE" ]]; then
-  # 如果未传入参数，从配置文件中读取 API 和 ID
+  echo "配置已更新到 $CONFIG_FILE"
+fi
+
+# 检查配置文件是否存在并读取
+if [[ -f "$CONFIG_FILE" ]]; then
   [[ -z "$API" ]] && API=$(jq -r '.api' "$CONFIG_FILE")
   [[ -z "$ID" ]] && ID=$(jq -r '.id' "$CONFIG_FILE")
 fi
 
-# 确保API和ID都已定义
+# 如果未传入API或ID且配置文件中也没有相应值，则报错
 if [[ -z "$API" || -z "$ID" ]]; then
-  echo "错误：未提供 API 或 ID，无法继续。"
+  echo "错误：未提供 API 或 ID，且配置文件中也不存在，无法继续。"
   exit 1
 fi
 
@@ -87,12 +95,5 @@ for platform in "${!media_status[@]}"; do
 done
 
 # 提交到AirPro平台
-# 使用 jq 生成 JSON body
-req_body=$(jq -n --arg id "$ID" --argjson platforms "$(printf '%s\n' "${unlocked_platforms[@]}" | jq -R . | jq -s .)" \
-  '{id: $id, platform: $platforms}')
-
-echo $req_body
-
-# 发起 POST 请求，将解锁的平台提交到指定 API 并打印结果
-res_body=$(curl -X POST -H "Content-Type: application/json" -d "$req_body" "$API")
+res_body=$(curl -X POST -H "Content-Type: application/json" -d "$(jq -n --arg id "$ID" --argjson platforms "$(printf '%s\n' "${unlocked_platforms[@]}" | jq -R . | jq -s .)" '{id: $id, platform: $platforms}')" "$API")
 echo "流媒体状态更新结果：$res_body"
