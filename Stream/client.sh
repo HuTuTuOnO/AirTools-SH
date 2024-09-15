@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VER='1.0.0'
+VER='1.0.4'
 
 # 检查是否为root用户
 [[ $EUID -ne 0 ]] && echo -e "错误：必须使用root用户运行此脚本！\n" && exit 1
@@ -72,14 +72,14 @@ declare -A nodes_info
 
 # 处理解锁平台信息
 for platform in $(echo "$PLATFORMS_JSON" | jq -r 'keys[]'); do
-  alias_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].alias | join(" ")')
-  rules_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].rules | join(" ")')
+  alias_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].alias // [] | join(" ")')
+  rules_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].rules // [] | join(" ")')
 
   for alias in $alias_list; do
-    node_info=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias]')
+    node_info=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias] // {}')
 
     # 检查是否获取到有效的节点信息
-    if [[ -z "$node_info" ]]; then
+    if [[ -z "$node_info" || "$node_info" == "{}" ]]; then
       echo "警告：无法找到别名 $alias 对应的节点信息，跳过该节点。"
       continue
     fi
