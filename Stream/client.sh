@@ -17,14 +17,11 @@ if ! command -v jq &> /dev/null || ! command -v bc &> /dev/null; then
   fi
 fi
 
-# 初始化变量
-API_URL=""
-
 # 解析传入的参数
 while [[ $# -gt 0 ]]; do
   case $1 in
     --API)
-      API_URL="$2"
+      API="$2"
       shift 2
       ;;
     *)
@@ -35,13 +32,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 # 检查是否传入了API地址
-if [[ -z "$API_URL" ]]; then
+if [[ -z "$API" ]]; then
   echo "错误：没有传入API地址，请使用 --API 传入有效的API地址。"
   exit 1
 fi
 
 # 获取流媒体解锁状态
-API_RESPONSE=$(curl -s "$API_URL")
+API_RESPONSE=$(curl -s "$API")
 CODE=$(echo "$API_RESPONSE" | jq -r '.code')
 MSG=$(echo "$API_RESPONSE" | jq -r '.msg')
 
@@ -75,31 +72,36 @@ declare -A nodes_info
 
 # 处理解锁平台信息
 for platform in $(echo "$PLATFORMS_JSON" | jq -r 'keys[]'); do
-  alias_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].alias[]')
-  rules_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].rules[]')
+  alias_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].alias | join(" ")')
+  rules_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].rules | join(" ")')
 
   for alias in $alias_list; do
     node_info=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias]')
+
+    # 检查是否获取到有效的节点信息
+    if [[ -z "$node_info" ]]; then
+      echo "警告：无法找到别名 $alias 对应的节点信息，跳过该节点。"
+      continue
+    fi
+
     node_key=$(echo "$node_info" | jq -r '.domain')
     node_type=$(echo "$node_info" | jq -r '.type')
     node_port=$(echo "$node_info" | jq -r '.port')
     node_password=$(echo "$node_info" | jq -r '.uuid')
     node_cipher=$(echo "$node_info" | jq -r '.cipher')
 
-    # 如果该节点还未添加规则，初始化该节点的路由信息
+    # 初始化节点路由信息
     if [[ -z "${routes[$node_key]}" ]]; then
       routes[$node_key]=""
       nodes_info[$node_key]="listen=\"\"\ntype=\"$node_type\"\nserver=\"$node_key\"\nport=$node_port\npassword=\"$node_password\"\ncipher=\"$node_cipher\""
     fi
 
     # 添加流媒体平台的域名规则
-    rules_str=""
-    for rule in $rules_list; do
-      rules_str+="\"$rule\",\n    "
-    done
+    rules_str=$(echo "$rules_list" | sed 's/ /",\n    "domain:/g')
+    rules_str="\"domain:$rules_str\""
 
     # 按照你提供的格式添加节点和规则
-    routes[$node_key]+="#$platform\n[[routes]]\nrules=[\n    \"#$platform\",\n    $rules_str\"#$platform--->\"\n]\n\n[[routes.Outs]] #路由 $alias 出口\n${nodes_info[$node_key]}"
+    routes[$node_key]+="#$platform\n[[routes]]\nrules=[\n    \"#$platform\",\n    $rules_str,\n    \"#$platform--->\"\n]\n\n[[routes.Outs]] #路由 $alias 出口\n${nodes_info[$node_key]}"
   done
 done
 
