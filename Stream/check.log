@@ -1,0 +1,215 @@
+nohup: ignoring input
+[H[2J[3J[35m脚本适配 OS: Ubuntu 16+, Debian 10+, RHEL 7+, Arch Linux, Alpine Linux, FreeBSD, MacOS 10.13+, Android (Termux), iOS (iSH), Windows (MinGW/Cygwin), OpenWRT 23+ 等。[0m
+
+ [流媒体平台及游戏区域限制测试]
+
+ ** 测试时间: Mon 16 Sep 2024 05:37:25 AM EDT
+ ** 版本: 1.0.0
+
+[H[2J[3J [流媒体平台及游戏区域限制测试]
+
+ ** 测试时间: Mon 16 Sep 2024 05:37:25 AM EDT
+ ** 版本: 1.0.0
+
+
+ [36m** 正在测试 IPv4 解锁情况[0m
+--------------------------------
+ [36m** 您的网络为: Akile (91.229.*.*)[0m
+
+
+============[ Multination ]============
+ Dazn:					[32mYes (Region: HK)[0m
+ Disney+:				[32mYes (Region: HK)[0m
+ Netflix:				[32mYes (Region: HK)[0m
+ YouTube Premium:			[32mYes (Region: HK)[0m
+ Amazon Prime Video:			[32mYes (Region: HK)[0m
+ TVBAnywhere+:				[31mNo[0m
+ Spotify Registration:			[31mNo[0m
+ Instagram Licensed Audio:		[31mFailed (Error: PAGE ERROR)[0m
+ Tiktok Region:				[31mFailed[0m
+ OneTrust Region:			[32mYes (Region: HK)[Unknown][0m
+ iQyi Oversea Region:			[32mYes (Region: HK)[0m
+ Bing Region:				[32mYes (Region: HK)[0m
+ YouTube CDN:				[32mYes (Region: Hong Kong)[0m
+ Netflix Preferred CDN:			[33m[Akile] in [Hong Kong][0m
+ ChatGPT:				[32mYes[0m
+ Google Gemini:				[31mNo[0m
+ Wikipedia Editability:			[31mNo[0m
+ Google Search CAPTCHA Free:		[32mYes[0m
+ Steam Currency:			[32mYes (Region: HKD)[0m
+[33m ---Forum---[0m
+ Reddit:				[32mYes[0m
+=======================================
+==============[ Taiwan ]===============
+ KKTV:					[31mNo[0m
+ LiTV:					[31mNo[0m
+ MyVideo:				[31mNo[0m
+ 4GTV.TV:				[31mNo[0m
+ LineTV.TW:				[31mNo[0m
+ Hami Video:				[31mNo[0m
+ CatchPlay+:				[31mNo[0m
+ HBO GO Asia:				[32mYes (Region: HK)[0m
+ Bahamut Anime:				[32mYes (Region: HK)[0m
+ SonyLiv:				[32mYes (Region: HK)[0m
+ Bilibili Taiwan Only:			[31mNo[0m
+=======================================
+=============[ Hong Kong ]=============
+ Now E:					[32mYes[0m
+ Viu.com:				[32mYes (Region: HK)[0m
+ Viu.TV:				[32mYes[0m
+ MyTVSuper:				[32mYes[0m
+ HBO GO Asia:				[32mYes (Region: HK)[0m
+ SonyLiv:				[32mYes (Region: HK)[0m
+ BiliBili Hongkong/Macau/Taiwan:	[32mYes[0m
+ Bahamut Anime:				[32mYes (Region: HK)[0m
+=======================================
+===============[ Japan ]===============
+ DMM:					[31mNo[0m
+ DMM TV:				[31mNo[0m
+ Abema.TV:				[31mNo[0m
+ Niconico:				[33mNo (Official Live Unavailable. LiveID: lv345673931)[0m
+ Telasa:				[31mNo[0m
+ U-NEXT:				[31mNo[0m
+ Hulu Japan:				[31mNo[0m
+ TVer:					[31mFailed (Error: PAGE ERROR)[0m
+ Lemino:				[31mNo[0m
+ AnimeFesta:				[31mNo[0m
+ WOWOW:					[31mNo[0m
+ VideoMarket:				[31mNo[0m
+ D Anime Store:				[31mNo[0m
+ FOD(Fuji TV):				[31mNo[0m
+ Radiko:				[31mNo[0m
+ Karaoke@DAM:				[31mNo[0m
+ J com On Demand:			[31mNo[0m
+ WATCHA:				[32mYes[0m
+ Rakuten TV JP:				[31mNo[0m
+[33m ---Game---[0m
+ Kancolle Japan:			[31mNo[0m
+ Pretty Derby Japan:			[31mNo[0m
+ Konosuba Fantastic Days:		[31mNo[0m
+ Princess Connect Re:Dive Japan:	[31mNo[0m
+ Project Sekai: Colorful Stage:		[32mYes[0m
+[33m ---Music---[0m
+ Mora:					[31mNo[0m
+ music.jp:				[31mNo[0m
+[33m ---Forum---[0m
+ EroGameSpace:				[31mFailed (Network Connection)[0m
+=======================================
+===========[ North America ]===========
+ Paramount+:				[31mNo[0m
+ Discovery+:				[31mNo (Not Yet Available in Asia Pacific)[0m
+ Acorn TV:				[31mNo[0m
+ BritBox:				[31mNo[0m
+ SonyLiv:				[32mYes (Region: HK)[0m
+ NBA TV:				[32mYes[0m
+ TLC GO:				[31mNo[0m
+ Shudder:				[31mNo[0m
+ Fubo TV:				[31mFailed (Network Connection)[0m
+ Tubi TV:				[31mNo[0m
+ Pluto TV:				[31mNo[0m
+ KOCOWA:				[31mNo[0m
+ AMC+:					[31mNo[0m
+ MathsSpot Roblox:			[31mNo[0m
+[33m ---US---[0m
+ FOX:					[31mNo[0m
+ Hulu:					[31mNo[0m
+ NFL+:					[31mNo[0m
+ ESPN+:				[31mNo[0m
+ MGM+:					[31mNo[0m
+ Starz:					[31mNo[0m
+ Philo:					[31mNo[0m
+ FXNOW:					[31mNo[0m
+ HBO Max:				[32mYes (Region: HK)[0m
+ Crackle:				[31mNo[0m
+ CW TV:					[31mNo[0m
+ A&E TV:				[31mNo[0m
+ NBC TV:				[31mNo[0m
+ Sling TV:				[31mNo[0m
+ encoreTVB:				[31mNo[0m
+ Peacock TV:				[31mNo[0m
+ Popcornflix:				[31mFailed (Network Connection)[0m
+ Crunchyroll:				[31mNo[0m
+ Directv Stream:			[31mNo[0m
+ Meta AI:				[31mNo[0m
+[33m ---CA---[0m
+ HotStar:				[31mNo[0m
+ CBC Gem:				[31mNo[0m
+ Crave:					[31mNo[0m
+=======================================
+===========[ South America ]===========
+ HBO Max:				[32mYes (Region: HK)[0m
+ DirecTV Go:				[31mNo[0m
+ Paramount+:				[31mNo[0m
+=======================================
+===============[ Europe ]==============
+ Paramount+:				[31mNo[0m
+ Discovery+:				[31mNo (Not Yet Available in Asia Pacific)[0m
+ SonyLiv:				[32mYes (Region: HK)[0m
+ HBO Max:				[32mYes (Region: HK)[0m
+ SkyShowTime:				[31mNo[0m
+ BritBox:				[31mNo[0m
+ Rakuten TV:				[31mNo[0m
+ Setanta Sports:			[31mNo[0m
+ MathsSpot Roblox:			[31mNo[0m
+[33m ---GB---[0m
+ HotStar:				[31mNo[0m
+ Sky Go:				[31mNo[0m
+ ITV Hub:				[31mFailed (Error: PAGE ERROR)[0m
+ Channel 4:				[31mNo[0m
+ Channel 5:				[31mNo[0m
+ BBC iPLAYER:				[31mNo[0m
+ Acorn TV:				[31mNo[0m
+ Shudder:				[31mNo[0m
+[33m ---FR---[0m
+ Canal+:				[31mFailed (Error: 404)[0m
+ Molotov:				[31mNo[0m
+[33m ---DE---[0m
+ Joyn:					[31mNo[0m
+ SKY DE:				[31mNo[0m
+ ZDF: 					[31mNo[0m
+[33m ---NL---[0m
+ NLZIET:				[31mFailed (Error: PAGE ERROR)[0m
+ videoland:				[31mNo[0m
+ NPO Start Plus:			[31mNo[0m
+[33m ---ES---[0m
+ Movistar+:				[31mNo[0m
+[33m ---IT---[0m
+ Rai Play:				[31mNo[0m
+[33m ---CH---[0m
+ SKY CH:				[31mNo[0m
+[33m ---RU---[0m
+ Amediateka:				[31mNo[0m
+=======================================
+==============[ Oceania ]==============
+ NBA TV:				[32mYes[0m
+ Acorn TV:				[31mNo[0m
+ BritBox:				[31mNo[0m
+ Paramount+:				[31mNo[0m
+ AMC+:					[31mNo[0m
+ SonyLiv:				[32mYes (Region: HK)[0m
+[33m ---AU---[0m
+ Binge:					[31mNo[0m
+ Docplay:				[31mNo[0m
+ 7plus:					[31mNo[0m
+ ABC iView:				[31mNo[0m
+ Channel 9:				[31mNo[0m
+ Channel 10:				[31mNo[0m
+ Optus Sports:				[31mNo[0m
+ SBS on Demand:				[31mNo[0m
+ Kayo Sports:				[31mNo[0m
+[33m ---NZ---[0m
+ Neon TV:				[31mNo[0m
+ SkyGo NZ:				[31mFailed (Error: 401)[0m
+ ThreeNow:				[31mNo[0m
+ Maori TV:				[31mNo[0m
+=======================================
+==============[ Korean ]===============
+ Wavve:					[31mNo[0m
+ Tving:					[31mNo[0m
+ WATCHA:				[32mYes[0m
+ Coupang Play:				[31mNo[0m
+ Naver TV:				[31mNo[0m
+ SPOTV NOW:				[31mNo[0m
+ Afreeca TV:				[32mYes[0m
+ KBS Domestic:				[31mNo[0m
+=======================================
