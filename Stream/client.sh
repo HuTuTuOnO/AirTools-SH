@@ -76,7 +76,7 @@ done <<< "$MEDIA_CONTENT"
 
 # 清空并初始化配置文件
 : > "$routes_file"
-echo "enable=false" > "$routes_file"
+echo "enable=true" > "$routes_file"
 
 # 记录已添加的出口节点和规则
 declare -A routes
