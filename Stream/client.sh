@@ -109,7 +109,7 @@ for platform in "${!media_status[@]}"; do
       # 获取当前节点域名
       node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
       if [[ -z "$node_domain" ]]; then
-        echo "警告：节点 $alias 的域名为空，跳过。"
+        echo "警告：平台 $platform 节点 $alias 的域名为空，跳过。"
         continue
       fi
 
@@ -123,9 +123,10 @@ for platform in "${!media_status[@]}"; do
       done
       
       if [[ -z "$ping_time" ]]; then
-        echo "警告：Ping 节点 $alias 失败，已跳过。"
+        echo "警告：平台 $platform Ping 节点 $alias 失败，已跳过。"
         continue
       fi
+      
       # 更新最优 alias
       if (( $(echo "$ping_time < $best_ping" | bc -l) )); then
         best_ping="$ping_time"
