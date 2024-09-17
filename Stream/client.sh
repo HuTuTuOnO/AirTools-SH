@@ -51,8 +51,15 @@ if [[ $(echo "$API_RES" | jq -r '.code') -ne 200 ]]; then
 fi
 
 # 解析 API 数据
-NODES_JSON=$(echo "$API_RES" | jq -r '.data.node // {}')
-PLATFORMS_JSON=$(echo "$API_RES" | jq -r '.data.platform // {}')
+if ! NODES_JSON=$(echo "$API_RES" | jq -r '.data.node // {}'); then
+  echo "错误：无法解析节点数据。"
+  exit 1
+fi
+
+if ! PLATFORMS_JSON=$(echo "$API_RES" | jq -r '.data.platform // {}'); then
+  echo "错误：无法解析平台数据。"
+  exit 1
+fi
 
 # 配置文件路径
 routes_file="/etc/soga/routes.toml"
@@ -106,10 +113,20 @@ for platform in "${!media_status[@]}"; do
         continue
       fi
 
-      # 进行 Ping 测试
-      ping_time=$(ping -c 1 "$node_domain" | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+      # 进行 Ping 测试，添加重试机制
+      ping_time=""
+      for attempt in {1..3}; do
+        ping_time=$(ping -c 1 "$node_domain" | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+        if [[ -n "$ping_time" ]]; then
+          break
+        else
+          echo "警告：Ping 节点 $alias 失败，重试 $attempt/3 次..."
+        fi
+      done
+
+      # 如果最终 ping 失败，跳过该节点
       if [[ -z "$ping_time" ]]; then
-        echo "警告：无法 Ping 节点 $alias，跳过。"
+        echo "警告：无法 Ping 节点 $alias，已跳过。" 
         continue
       fi
 
