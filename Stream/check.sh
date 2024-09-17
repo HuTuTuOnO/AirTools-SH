@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 此脚本修改与 https://github.com/lmc999/RegionRestrictionCheck
+
 # 此脚本修改
 # 1.去除广告
 # 2.增加TikTok
