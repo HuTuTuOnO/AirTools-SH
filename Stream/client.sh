@@ -84,10 +84,10 @@ declare -A routes
 # 循环对比判断是否解锁
 for platform in "${!media_status[@]}"; do
   if [[ "${media_status[$platform]}" != "Yes" ]]; then
-    # 获取平台的别名和规则
-    alias_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].alias[] // empty')
-    rules_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].rules[] // empty')
-
+    # 检查是否存在别名和规则，并避免 null 值导致错误
+    alias_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].alias // empty | select(. != null)[]')
+    rules_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].rules // empty | select(. != null)[]')
+    
     # 如果别名和规则为空，跳过该平台
     if [[ -z "$alias_list" || -z "$rules_list" ]]; then
       echo "警告：平台 $platform 没有找到别名或规则，跳过。"
