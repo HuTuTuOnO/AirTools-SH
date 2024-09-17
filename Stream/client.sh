@@ -119,17 +119,13 @@ for platform in "${!media_status[@]}"; do
         ping_time=$(ping -c 1 "$node_domain" | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
         if [[ -n "$ping_time" ]]; then
           break
-        else
-          echo "警告：Ping 节点 $alias 失败，重试 $attempt/3 次..."
         fi
       done
-
-      # 如果最终 ping 失败，跳过该节点
+      
       if [[ -z "$ping_time" ]]; then
-        echo "警告：无法 Ping 节点 $alias，已跳过。" 
+        echo "警告：Ping 节点 $alias 失败，已跳过。"
         continue
       fi
-
       # 更新最优 alias
       if (( $(echo "$ping_time < $best_ping" | bc -l) )); then
         best_ping="$ping_time"
