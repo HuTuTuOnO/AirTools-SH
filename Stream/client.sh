@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# 设置终端环境变量
+export TERM=xterm  
+
 VER='1.0.9'
 
 # 检查是否为 root 用户
