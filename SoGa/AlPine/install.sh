@@ -138,7 +138,8 @@ install_soga() {
     fi
     wget -N --no-check-certificate "https://github.com/vaxilu/soga/releases/download/${last_version}/soga-linux-${arch}.tar.gz"
     tar zxvf soga-linux-${arch}.tar.gz
-    rm soga-linux-${arch}.tar.gz -f
+    # 删除多余文件
+    rm soga-linux-${arch}.tar.gz soga.service soga@.service -f
     chmod 777 soga
     
     
