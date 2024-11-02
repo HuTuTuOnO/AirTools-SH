@@ -36,7 +36,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # 定义配置文件路径
-CONFIG_FILE="/opt/AirPro/Stream/service.json"
+CONFIG_FILE="/opt/AirTools/Stream/service.json"
 
 # 如果传入了 API 或 ID 参数，更新本地配置文件
 if [[ -n "$API" || -n "$ID" ]]; then
@@ -65,7 +65,7 @@ if [[ -z "$API" || -z "$ID" ]]; then
 fi
 
 # 获取流媒体解锁状态
-MEDIA_CONTENT=$(bash <(curl -L -s https://raw.githubusercontent.com/HuTuTuOnO/AirPro-SH/main/Stream/check.sh) -M 4 -R 66 2>&1 | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
+MEDIA_CONTENT=$(bash <(curl -L -s https://raw.githubusercontent.com/HuTuTuOnO/AirTools-SH/main/Stream/check.sh) -M 4 -R 66 2>&1 | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
 
 # 读取流媒体状态
 declare -A media_status
@@ -90,6 +90,6 @@ done <<< "$MEDIA_CONTENT"
 #   echo "$platform: ${media_status[$platform]}"
 # done
 
-# 提交到AirPro平台
+# 提交到AirTools平台
 res_body=$(curl -X POST -H "Content-Type: application/json" -d "$(jq -n --arg id "$ID" --argjson platforms "$(printf '%s\n' "${unlocked_platforms[@]}" | jq -R . | jq -s .)" '{id: $id, platform: $platforms}')" "$API")
 echo "流媒体状态更新结果：$res_body"
