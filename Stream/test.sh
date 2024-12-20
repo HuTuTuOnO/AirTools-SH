@@ -49,22 +49,26 @@ proxy_soft=($(jq -r '.proxy_soft[]' < "$config_file" 2>/dev/null))
 # 选择代理软件（如果未配置）
 if [[ ${#proxy_soft[@]} -eq 0 ]]; then
   proxy_soft_options=("soga" "xrayr" "soga-docker")
-  PS3="请选择要使用的代理软件 (多选，用空格分隔序号，例如：1 2 3): "
+  selected=()
+  PS3="请选择要使用的代理软件 (多选，用空格分隔序号, 回车确认): "
   select choices in "${proxy_soft_options[@]}" "退出"; do
     case $choices in
       "退出")
         exit 0
         ;;
       *)
-        proxy_soft+=("$choices")
+        selected+=("$choices")
         ;;
     esac
-    break  # 如果需要多选，移除此行
   done
-  
-  # 将 bash 数组转换为 JSON 数组字符串
-  proxy_soft_json=$(printf '%s\n' "${proxy_soft[@]}" | jq -Rs 'map(.) | @json')
-  
+
+
+  if [[ ${#selected[@]} -gt 0 ]]; then  # 检查是否选择了任何选项
+    proxy_soft_json=$(jq -n -c '[$ARGS.positional[]]' --args "${selected[@]}")
+  else
+    proxy_soft_json="[]"  # 如果没有选择，设置为空数组
+  fi
+
   # 保存选择的软件到文件
   mkdir -p "$(dirname "$config_file")"
   jq -n --argjson soft "$proxy_soft_json" '{"proxy_soft": $soft}' > "$config_file"
