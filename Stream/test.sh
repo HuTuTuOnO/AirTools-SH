@@ -296,3 +296,52 @@ for software in "${proxy_soft[@]}"; do
     print_message "$RED" "错误：$software 配置文件生成失败。\n"
   fi
 done
+
+# 循环处理代理软件
+for software in "${proxy_soft[@]}"; do
+  # ... (之前的循环内代码不变)
+
+  # 重启服务
+  case "$software" in
+    "soga")
+      if systemctl is-active --quiet soga; then
+        systemctl restart soga
+        restart_result=$?
+      elif which soga &> /dev/null; then # 检查 soga 命令是否存在
+        soga restart # 如果 soga 不是 systemd 服务，尝试直接使用命令重启
+        restart_result=$?
+      else
+        print_message "$YELLOW" "警告：找不到 soga 服务或命令，无法重启。\n"
+        restart_result=1
+      fi
+      ;;
+    "soga-docker")
+      container_name=$(docker ps -a -f "ancestor=vaxilu/soga" -q)
+      if [[ -n "$container_name" ]]; then
+        docker restart "$container_name"
+        restart_result=$?
+      else
+        print_message "$RED" "错误：找不到 vaxilu/soga 镜像的容器。\n"
+        restart_result=1
+      fi
+      ;;
+    "xrayr")
+      if systemctl is-active --quiet xrayr; then
+        systemctl restart xrayr
+        restart_result=$?
+      elif which xrayr &> /dev/null; then
+        xrayr restart
+        restart_result=$?
+      else
+        print_message "$YELLOW" "警告：找不到 xrayr 服务或命令，无法重启。\n"
+        restart_result=1
+      fi
+      ;;
+  esac
+
+  if [[ $restart_result -eq 0 ]]; then
+    print_message "$GREEN" "$software 重启成功。\n"
+  else
+    print_message "$RED" "错误：$software 重启失败。\n"
+  fi
+done
