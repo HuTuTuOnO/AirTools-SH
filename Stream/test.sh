@@ -204,13 +204,54 @@ for platform in "${!media_status[@]}"; do
   fi
 done
 
-# 生成配置文件
+# 配置文件路径
 declare -A routes_files=(
   ["soga"]="/etc/soga/routes.conf"
   ["soga-docker"]="/etc/soga/routes.conf"
   ["xrayr"]="/etc/xrayr/config.json"
 )
 
+# 生成 SOGA 配置文件函数
+generate_soga_config() {
+  local routes_file="$1"
+
+  # 清空并初始化配置文件
+  : > "$routes_file"
+  echo "enable=true" > "$routes_file"
+
+  for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
+    if [[ -z "${routes[$alias]}" ]]; then
+      echo "警告：节点 $alias 没有任何规则，跳过。"
+      continue
+    fi
+  
+    # 写入路由规则
+    echo -e "\n# 路由 $alias\n[[routes]]\nrules=[" >> "$routes_file"
+    
+    IFS='^'
+    for rule in ${routes[$alias]}; do
+      echo "$rule" >> "$routes_file"
+    done
+    unset IFS
+  
+    echo ']' >> "$routes_file"
+  
+    # 获取节点信息
+    node_type=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].type // empty')
+    node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
+    node_port=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].port // empty')
+    node_cipher=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].cipher // empty')
+    node_password=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].uuid // empty')
+  
+    # 写入出口节点
+    echo -e "\n# 出口 $alias\n[[routes.Outs]]\ntype=\"$node_type\"\nserver=\"$node_domain\"\nport=$node_port\npassword=\"$node_password\"\ncipher=\"$node_cipher\"" >> "$routes_file"
+  done
+
+  # 添加全局路由规则
+  echo -e "\n# 路由 ALL\n[[routes]]\nrules=[\"*\"]\n\n# 出口 ALL\n[[routes.Outs]]\ntype=\"direct\"" >> "$routes_file"
+}
+
+# 循环处理代理软件
 for software in "${proxy_soft[@]}"; do
   routes_file="${routes_files[$software]}"
 
@@ -218,119 +259,14 @@ for software in "${proxy_soft[@]}"; do
     print_message "$RED" "错误：未找到 $software 的路由文件配置。"
     continue
   fi
-
-  # 创建配置文件的备份 (可选)
-  if [[ -f "$routes_file" ]]; then
-    cp "$routes_file" "$routes_file.bak"
-  fi
-
+  
   case "$software" in
     "soga" | "soga-docker")
       # ... (SOGA 配置文件生成逻辑)
-      
-      # 清空并初始化配置文件
-      : > "$routes_file"
-      echo "enable=true" > "$routes_file"
-      
-      for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
-        if [[ -z "${routes[$alias]}" ]]; then
-          echo "警告：节点 $alias 没有任何规则，跳过。"
-          continue
-        fi
-      
-        # 写入路由规则
-        echo -e "\n# 路由 $alias\n[[routes]]\nrules=[" >> "$routes_file"
-        
-        IFS='^'
-        for rule in ${routes[$alias]}; do
-          echo "$rule" >> "$routes_file"
-        done
-        unset IFS
-      
-        echo ']' >> "$routes_file"
-      
-        # 获取节点信息
-        node_type=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].type // empty')
-        node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
-        node_port=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].port // empty')
-        node_cipher=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].cipher // empty')
-        node_password=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].uuid // empty')
-      
-        # 写入出口节点
-        echo -e "\n# 出口 $alias\n[[routes.Outs]]\ntype=\"$node_type\"\nserver=\"$node_domain\"\nport=$node_port\npassword=\"$node_password\"\ncipher=\"$node_cipher\"" >> "$routes_file"
-      done
-      # 添加全局路由规则
-      echo -e "\n# 路由 ALL\n[[routes]]\nrules=[\"*\"]\n\n# 出口 ALL\n[[routes.Outs]]\ntype=\"direct\"" >> "$routes_file"
+      generate_soga_config "$routes_file"
       ;;
     "xrayr")
-      # ... (XrayR 配置文件生成逻辑，使用 $routes_file)
-        # 构建 XrayR 的 routing rules
-        routing_rules='{"domainStrategy": "AsIs","rules": ['
-        for alias in "${!routes[@]}"; do
-            # 获取节点信息
-            node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
-            if [[ -n "$node_domain" ]]; then # 确保域名不为空
-                routing_rules+="{\"type\": \"field\",\"outboundTag\": \"$alias\",\"domain\": [$(echo "${routes[$alias]}" | sed 's/\^//g' | sed 's/,$//g')]},"
-            fi
-        done
-        routing_rules+="{\"type\": \"field\",\"outboundTag\": \"direct\",\"domain\": [\"geosite:private\",\"geosite:cn\"]}]}"
-      
-      
-        # 构建完整的 XrayR 配置
-        xrayr_config=$(jq -n \
-            --arg routing_rules "$routing_rules" \
-            '{
-              "log": {"loglevel": "warning"},
-              "inbounds": [
-                {"port": 443, "protocol": "vless", "settings": {"clients": [{"id": "YOUR_UUID"}]}, "streamSettings": {"network": "tcp","security": "tls","tlsSettings": {"serverName": "YOUR_DOMAIN"}}}
-              ],
-              "outbounds": [
-                {"protocol": "freedom", "settings": {}}, # 默认直连出口
-                {"protocol": "blackhole", "settings": {}, "tag": "block"}
-              ],
-              "routing": $routing_rules
-            }'
-        )
-      
-      
-      
-        # 添加每个 alias 对应的 outbound 配置
-        for alias in "${!routes[@]}"; do
-          node_type=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].type // empty')
-          node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
-          node_port=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].port // empty')
-          node_cipher=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].cipher // empty')  # 注意：这里使用 cipher
-          node_uuid=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].uuid // empty') # 使用 uuid
-      
-      
-          xrayr_config=$(echo "$xrayr_config" | jq --arg alias "$alias" \
-              --arg node_type "$node_type" \
-              --arg node_domain "$node_domain" \
-              --arg node_port "$node_port" \
-              --arg node_uuid "$node_uuid" \
-              '.outbounds += [{
-                "tag": $alias,
-                "protocol": "vless",
-                "settings": {
-                  "vnext": [
-                    {
-                      "address": $node_domain,
-                      "port": $node_port|tonumber,
-                      "users": [
-                        {"id": $node_uuid, "encryption": "none", "level": 0}
-                      ]
-                    }
-                  ]
-                },
-                "streamSettings": {
-                  "network": "tcp",
-                  "security": "tls",
-                  "tlsSettings": {"serverName": $node_domain}
-                }
-              }]')
-        done
-      
-        echo "$xrayr_config" > "$routes_file"
+      generate_xrayr_config "$routes_file"
       ;;
     *)
       print_message "$YELLOW" "警告：不支持的代理软件：$software"
