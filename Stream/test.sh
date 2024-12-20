@@ -50,12 +50,12 @@ proxy_soft=($(jq -r '.proxy_soft[]' < "$config_file" 2>/dev/null))
 if [[ ${#proxy_soft[@]} -eq 0 ]]; then
   proxy_soft_options=("soga" "xrayr" "soga-docker")
   selected=()
-  PS3="请选择要使用的代理软件 (多选，用空格分隔序号, 回车确认): "
+  PS3="请选择要使用的代理软件: "
 
   while true; do
-    select choice in "${proxy_soft_options[@]}" "完成选择" "退出"; do
+    select choice in "${proxy_soft_options[@]}" "完成" "退出"; do
       case $choice in
-        "完成选择")
+        "完成")
           break 2 # 退出内层和外层循环
           ;;
         "退出")
@@ -78,8 +78,6 @@ if [[ ${#proxy_soft[@]} -eq 0 ]]; then
   mkdir -p "$(dirname "$config_file")"
   jq -n --argjson soft "$proxy_soft_json" '{"proxy_soft": $soft}' > "$config_file"
 fi
-
-echo "已选择的代理软件: ${selected[@]}" #  确认选择的软件
 
 # 解析 API URL
 while [[ $# -gt 0 ]]; do
