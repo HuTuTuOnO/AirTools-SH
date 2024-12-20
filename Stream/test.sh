@@ -268,7 +268,7 @@ for software in "${proxy_soft[@]}"; do
     "xrayr")
       # ... (XrayR 配置文件生成逻辑，使用 $routes_file)
         # 构建 XrayR 的 routing rules
-        local routing_rules='{"domainStrategy": "AsIs","rules": ['
+        routing_rules='{"domainStrategy": "AsIs","rules": ['
         for alias in "${!routes[@]}"; do
             # 获取节点信息
             node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
