@@ -52,33 +52,34 @@ if [[ ${#proxy_soft[@]} -eq 0 ]]; then
   selected=()
   PS3="请选择要使用的代理软件 (多选，用空格分隔序号, 回车确认): "
 
-  # 直接使用循环生成选项
-  options_with_numbers=()
-  for i in "${!proxy_soft_options[@]}"; do
-    options_with_numbers+=("$((i+1))" "${proxy_soft_options[i]}")
+  while true; do
+    select choice in "${proxy_soft_options[@]}" "完成选择" "退出"; do
+      case $choice in
+        "完成选择")
+          break 2 # 退出内层和外层循环
+          ;;
+        "退出")
+          exit 0
+          ;;
+        "")
+          echo "无效选择."
+          ;;
+        *)
+          selected+=("$choice")
+          echo "已选择: ${selected[@]}"
+          ;;
+      esac
+    done
   done
-  options_with_numbers+=("q" "退出")
-  select choices in "${options_with_numbers[@]}"; do
-    case $choices in
-      "退出")
-        exit 0
-        ;;
-      [1-3])
-        selected+=("${proxy_soft_options[$((choices - 1))]}")
-        ;;
-      q)
-        exit 0
-        ;;
-      *)
-        echo "无效选择."
-        ;;
-    esac
-  done
+
+
   proxy_soft_json=$(jq -n -c '[$ARGS.positional[]]' --args "${selected[@]}")
   # 保存选择的软件到文件
   mkdir -p "$(dirname "$config_file")"
   jq -n --argjson soft "$proxy_soft_json" '{"proxy_soft": $soft}' > "$config_file"
 fi
+
+echo "已选择的代理软件: ${selected[@]}" #  确认选择的软件
 
 # 解析 API URL
 while [[ $# -gt 0 ]]; do
