@@ -135,10 +135,6 @@ while IFS= read -r line; do
   fi
 done <<< "$MEDIA_CONTENT"
 
-# 清空并初始化配置文件
-: > "$routes_file"
-echo "enable=true" > "$routes_file"
-
 # 记录已添加的出口节点和规则
 declare -A routes
 
@@ -217,16 +213,28 @@ declare -A routes_files=(
   ["soga-docker"]="/etc/soga/routes.conf"
   ["xrayr"]="/etc/xrayr/config.json"
 )
+
 for software in "${proxy_soft[@]}"; do
   routes_file="${routes_files[$software]}"
 
   if [[ -z "$routes_file" ]]; then
-    echo "错误：未找到 $software 的路由文件配置。"
-    continue  # 跳过当前软件，继续下一个
+    print_message "$RED" "错误：未找到 $software 的路由文件配置。"
+    continue
   fi
+
+  # 创建配置文件的备份 (可选)
+  if [[ -f "$routes_file" ]]; then
+    cp "$routes_file" "$routes_file.bak"
+  fi
+
   case "$software" in
     "soga" | "soga-docker")
-      # ... (SOGA 配置文件生成逻辑，使用 $routes_file)
+      # ... (SOGA 配置文件生成逻辑)
+      
+      # 清空并初始化配置文件
+      : > "$routes_file"
+      echo "enable=true" > "$routes_file"
+      
       for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
         if [[ -z "${routes[$alias]}" ]]; then
           echo "警告：节点 $alias 没有任何规则，跳过。"
@@ -261,13 +269,17 @@ for software in "${proxy_soft[@]}"; do
       # ... (XrayR 配置文件生成逻辑，使用 $routes_file)
       ;;
     *)
-      echo "警告：不支持的代理软件：$software"
+      print_message "$YELLOW" "警告：不支持的代理软件：$software"
       ;;
   esac
 
-  if [[ -f "$routes_file" ]]; then  # 检查配置文件是否成功生成
-    echo "配置文件 $software 生成完成：$routes_file"
+  if [[ -f "$routes_file" ]]; then
+    print_message "$GREEN" "配置文件 $software 生成完成：$routes_file"
   else
-    echo "错误：$software 配置文件生成失败。"
+    print_message "$RED" "错误：$software 配置文件生成失败。"
+    #  如果生成失败，尝试恢复备份 (可选)
+    if [[ -f "$routes_file.bak" ]]; then
+      mv "$routes_file.bak" "$routes_file"
+    fi
   fi
 done
