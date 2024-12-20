@@ -252,8 +252,85 @@ generate_soga_config() {
 }
 
 # 生成 XrayR 配置文件函数
+# 生成 XrayR 配置文件函数
 generate_xrayr_config() {
   local routes_file="$1"
+
+  # 构建 XrayR 的 routing rules
+  local routing_rules='{"domainStrategy": "AsIs","rules": ['
+  for alias in "${!routes[@]}"; do
+    local node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
+    if [[ -n "$node_domain" ]]; then
+      routing_rules+="{\"type\": \"field\",\"outboundTag\": \"$alias\",\"domain\": [$(echo "${routes[$alias]}" | sed 's/\^//g' | sed 's/,$//g')]},"
+    fi
+  done
+  routing_rules+="{\"type\": \"field\",\"outboundTag\": \"direct\",\"domain\": [\"geosite:private\",\"geosite:cn\"]}]}"
+
+
+  # 从 NODES_JSON 中获取第一个节点的 UUID 和 domain 作为默认值
+  local default_uuid=$(echo "$NODES_JSON" | jq -r 'keys[] | first | . as $key | .[$key].uuid // empty')
+  local default_domain=$(echo "$NODES_JSON" | jq -r 'keys[] | first | . as $key | .[$key].domain // empty')
+
+  # 如果找不到默认值，则报错退出
+  if [[ -z "$default_uuid" || -z "$default_domain" ]]; then
+    print_message "$RED" "错误：无法从 API 数据中获取默认 UUID 或 Domain。"
+    return 1  # 返回错误代码
+  fi
+
+  # 构建完整的 XrayR 配置
+  local xrayr_config=$(jq -n \
+    --arg routing_rules "$routing_rules" \
+    --arg uuid "$default_uuid" \
+    --arg domain "$default_domain" \
+    '{
+      "log": {"loglevel": "warning"},
+      "inbounds": [
+        {"port": 443, "protocol": "vless", "settings": {"clients": [{"id": $uuid}]}, "streamSettings": {"network": "tcp", "security": "tls", "tlsSettings": {"serverName": $domain}}}
+      ],
+      "outbounds": [
+        {"protocol": "freedom", "settings": {}},
+        {"protocol": "blackhole", "settings": {}, "tag": "block"}
+      ],
+      "routing": $routing_rules
+    }'
+  )
+
+  # 添加每个 alias 对应的 outbound 配置
+  for alias in "${!routes[@]}"; do
+    local node_type=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].type // empty')
+    local node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
+    local node_port=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].port // empty')
+    local node_cipher=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].cipher // empty') # 获取 cipher，虽然目前未使用
+    local node_uuid=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].uuid // empty')
+
+    xrayr_config=$(echo "$xrayr_config" | jq --arg alias "$alias" \
+      --arg node_type "$node_type" \
+      --arg node_domain "$node_domain" \
+      --arg node_port "$node_port" \
+      --arg node_uuid "$node_uuid" \
+      '.outbounds += [{
+        "tag": $alias,
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": $node_domain,
+              "port": $node_port|tonumber,
+              "users": [
+                {"id": $node_uuid, "encryption": "none", "level": 0}
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "tcp",
+          "security": "tls",
+          "tlsSettings": {"serverName": $node_domain}
+        }
+      }]')
+  done
+
+  echo "$xrayr_config" > "$routes_file"
 }
 
 # 循环处理代理软件
@@ -282,9 +359,5 @@ for software in "${proxy_soft[@]}"; do
     print_message "$GREEN" "配置文件 $software 生成完成：$routes_file"
   else
     print_message "$RED" "错误：$software 配置文件生成失败。"
-    #  如果生成失败，尝试恢复备份 (可选)
-    if [[ -f "$routes_file.bak" ]]; then
-      mv "$routes_file.bak" "$routes_file"
-    fi
   fi
 done
