@@ -184,7 +184,7 @@ done
 
 # 生成 SOGA 配置文件
 generate_soga_config(){
-  local routes_file="$1"
+  local routes_file="${1}/routes.toml"
    : > "$routes_file" # 清空文件
    echo "enable=true" > "$routes_file"
 
@@ -227,28 +227,24 @@ generate_xrayr_config() {
 
 # 配置文件路径
 declare -A routes_files=(
-  ["soga"]="/etc/soga/routes.toml"
-  ["soga-docker"]="/etc/soga/routes.toml"
-  ["xrayr"]="/etc/xrayr/config.json"
+  ["soga"]="/etc/soga"
+  ["soga-docker"]="/etc/soga"
+  ["xrayr"]="/etc/xrayr"
 )
 
 # 循环处理代理软件
 for software in "${proxy_soft[@]}"; do
   routes_file="${routes_files[$software]}"
-  if [[ -z "$routes_file" ]]; then
-    echo "错误：未找到 $software 的路由文件配置。"
-    continue
-  fi
-    case "$software" in
-    "soga" | "soga-docker") 
-      generate_soga_config "$routes_file"
-      ;;
-    "xrayr") 
-      generate_xrayr_config "$routes_file" 
-      ;;
-    *) 
-      echo "警告：不支持的代理软件：$software"
-      ;;
+  case "$software" in
+  "soga" | "soga-docker") 
+    generate_soga_config "$routes_file"
+    ;;
+  "xrayr") 
+    generate_xrayr_config "$routes_file" 
+    ;;
+  *) 
+    echo "警告：不支持的代理软件：$software"
+    ;;
   esac
   
 done
