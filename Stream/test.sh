@@ -251,6 +251,11 @@ generate_soga_config() {
   echo -e "\n# 路由 ALL\n[[routes]]\nrules=[\"*\"]\n\n# 出口 ALL\n[[routes.Outs]]\ntype=\"direct\"" >> "$routes_file"
 }
 
+# 生成 XrayR 配置文件函数
+generate_xrayr_config() {
+  local routes_file="$1"
+}
+
 # 循环处理代理软件
 for software in "${proxy_soft[@]}"; do
   routes_file="${routes_files[$software]}"
