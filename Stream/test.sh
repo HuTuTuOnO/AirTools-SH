@@ -132,8 +132,8 @@ declare -A routes
 for platform in "${!media_status[@]}"; do
   if [[ "${media_status[$platform]}" != "Yes" ]]; then
     # 检查是否存在别名和规则，并避免 null 值导致错误
-    alias_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].alias // empty | select(. != null)[]')
-    rules_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].rules // empty | select(. != null)[]')
+    alias_list=$(echo "$platforms_json" | jq -r --arg platform "$platform" '.[$platform].alias // empty | select(. != null)[]')
+    rules_list=$(echo "$platforms_json" | jq -r --arg platform "$platform" '.[$platform].rules // empty | select(. != null)[]')
     
     # 如果别名和规则为空，跳过该平台
     if [[ -z "$alias_list" || -z "$rules_list" ]]; then
@@ -147,7 +147,7 @@ for platform in "${!media_status[@]}"; do
 
     for alias in $alias_list; do
       # 获取当前节点域名
-      node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
+      node_domain=$(echo "$nodes_json" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
       if [[ -z "$node_domain" ]]; then
         echo "警告：平台 $platform 节点 $alias 的域名为空，跳过。"
         continue
