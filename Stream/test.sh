@@ -93,22 +93,23 @@ if [[ -z "$API" ]]; then
   exit 1
 fi
 
-# 获取并解析 API 数据
-get_api_data() {
-  API_RES=$(curl -s "$API")
-  if [[ $(echo "$API_RES" | jq -r '.code') -ne 200 ]]; then
-    print_message "$RED" "错误：API 请求失败: $(echo "$API_RES" | jq -r '.msg')\n"
-    return 1
-  fi
-  NODES_JSON=$(echo "$API_RES" | jq -r '.data.node // {}')
-  PLATFORMS_JSON=$(echo "$API_RES" | jq -r '.data.platform // {}')
-  [[ -n "$NODES_JSON" && -n "$PLATFORMS_JSON" ]] # 检查是否成功解析
-}
-
-if ! get_api_data; then
+# 获取 API 数据
+api_res=$(curl -s "$API")
+if [[ $(echo "$api_res" | jq -r '.code') -ne 200 ]]; then
+  echo "错误：无法获取流媒体解锁状态，原因: $(echo "$api_res" | jq -r '.msg')"
   exit 1
 fi
 
+# 解析 API 数据
+if ! nodes_json=$(echo "$api_res" | jq -r '.data.node // {}'); then
+  echo "错误：无法解析节点数据。"
+  exit 1
+fi
+
+if ! platforms_json=$(echo "$api_res" | jq -r '.data.platform // {}'); then
+  echo "错误：无法解析平台数据。"
+  exit 1
+fi
 
 # 获取流媒体解锁状态 (可以考虑将 check.sh 集成到此脚本中)
 media_content=$(bash <(curl -L -s https://raw.githubusercontent.com/HuTuTuOnO/AirPro-SH/main/Stream/check.sh) -M 4 -R 66 | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
@@ -130,8 +131,8 @@ declare -A routes
 # 循环处理平台和节点
 for platform in "${!media_status[@]}"; do
   if [[ "${media_status[$platform]}" != "Yes" ]]; then
-    alias_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].alias // [] | select(. != null)[]') # 处理空数组
-    rules_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].rules // [] | select(. != null)[]') # 处理空数组
+    alias_list=$(echo "$platforms_json" | jq -r --arg platform "$platform" '.[$platform].alias // [] | select(. != null)[]') # 处理空数组
+    rules_list=$(echo "$platforms_json" | jq -r --arg platform "$platform" '.[$platform].rules // [] | select(. != null)[]') # 处理空数组
 
     # 跳过没有别名或规则的平台
     if [[ -z "$alias_list" || -z "$rules_list" ]]; then
@@ -144,7 +145,7 @@ for platform in "${!media_status[@]}"; do
     best_ping=999999
     best_alias=""
     for alias in $alias_list; do
-      node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
+      node_domain=$(echo "$nodes_json" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
       if [[ -z "$node_domain" ]]; then
         print_message "$YELLOW" "警告：平台 $platform 节点 $alias 的域名为空，跳过。\n"
         continue
@@ -203,12 +204,12 @@ generate_soga_config() {
   : > "$routes_file" # 清空文件
   echo "enable=true" > "$routes_file"
 
-  for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
+  for alias in $(echo "$nodes_json" | jq -r 'keys[]'); do
     if [[ -n "${routes[$alias]}" ]]; then  # 检查是否存在路由规则
       echo -e "\n# 路由 $alias\n[[routes]]\nrules=[${routes[$alias]%*,}\n]" >> "$routes_file" # 使用参数扩展去除最后一个逗号
 
       # 获取节点信息 (可以使用jq一次性获取所有信息)
-      node_info=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias] | "\(.type // empty)\n\(.domain // empty)\n\(.port // empty)\n\(.uuid // empty)\n\(.cipher // empty)"')
+      node_info=$(echo "$nodes_json" | jq -r --arg alias "$alias" '.[$alias] | "\(.type // empty)\n\(.domain // empty)\n\(.port // empty)\n\(.uuid // empty)\n\(.cipher // empty)"')
       read -r node_type node_domain node_port node_uuid node_cipher <<< "$node_info"
 
       echo -e "\n# 出口 $alias\n[[routes.Outs]]\ntype=\"$node_type\"\nserver=\"$node_domain\"\nport=$node_port\npassword=\"$node_uuid\"\ncipher=\"$node_cipher\"" >> "$routes_file"
@@ -226,7 +227,7 @@ generate_xrayr_config() {
   # 构建 routing rules (更简洁的 jq 用法)
   routing_rules=$(jq -n \
     --argjson routes "$routes" \
-    --argjson nodes "$NODES_JSON" \
+    --argjson nodes "$nodes_json" \
     '{
       "domainStrategy": "AsIs",
       "rules": [
@@ -245,8 +246,8 @@ generate_xrayr_config() {
 
 
   # 获取默认 UUID 和 domain (错误处理)
-  default_uuid=$(echo "$NODES_JSON" | jq -r 'keys[] | first | . as $key | .[$key].uuid // empty')
-  default_domain=$(echo "$NODES_JSON" | jq -r 'keys[] | first | . as $key | .[$key].domain // empty')
+  default_uuid=$(echo "$nodes_json" | jq -r 'keys[] | first | . as $key | .[$key].uuid // empty')
+  default_domain=$(echo "$nodes_json" | jq -r 'keys[] | first | . as $key | .[$key].domain // empty')
   if [[ -z "$default_uuid" || -z "$default_domain" ]]; then
     print_message "$RED" "错误：无法获取默认 UUID 或 Domain。\n"
     return 1
@@ -257,7 +258,7 @@ generate_xrayr_config() {
     --arg routing_rules "$routing_rules" \
     --arg uuid "$default_uuid" \
     --arg domain "$default_domain" \
-    --argjson nodes "$NODES_JSON" \
+    --argjson nodes "$nodes_json" \
     '{
       "log": {"loglevel": "warning"},
       "inbounds": [
