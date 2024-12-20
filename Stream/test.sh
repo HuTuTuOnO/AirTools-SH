@@ -71,7 +71,6 @@ if [[ ${#proxy_soft[@]} -eq 0 ]]; then
     if [[ ${#proxy_soft[@]} -gt 0 ]]; then
       # 保存选择的软件到文件
       mkdir -p "$(dirname "$config_file")"  # 使用 $config_file
-      
       # 使用 printf 和 jq 构建 JSON 数组 (与之前版本相同)
       printf '{"proxy_soft": ['
       for i in "${!proxy_soft[@]}"; do
@@ -81,8 +80,6 @@ if [[ ${#proxy_soft[@]} -eq 0 ]]; then
         fi
       done
       printf ']}\n' | jq . > "$config_file" # 使用 $config_file
-
-
       break
     else
       echo "请至少选择一个代理软件。"
@@ -123,7 +120,7 @@ if ! PLATFORMS_JSON=$(echo "$API_RES" | jq -r '.data.platform // {}'); then
 fi
 
 # 获取流媒体解锁状态
-MEDIA_CONTENT=$(bash <(curl -L -s https://raw.githubusercontent.com/HuTuTuOnO/AirPro-SH/main/Stream/check.sh) -M 4 -R 66 | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
+media_content=$(bash <(curl -L -s https://raw.githubusercontent.com/HuTuTuOnO/AirPro-SH/main/Stream/check.sh) -M 4 -R 66 | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
 
 # 解析流媒体状态
 declare -A media_status
@@ -133,7 +130,7 @@ while IFS= read -r line; do
     status="${BASH_REMATCH[2]}"
     media_status["$platform"]="$status"
   fi
-done <<< "$MEDIA_CONTENT"
+done <<< "$media_content"
 
 # 记录已添加的出口节点和规则
 declare -A routes
