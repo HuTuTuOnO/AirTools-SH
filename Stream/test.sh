@@ -60,19 +60,20 @@ if [[ ${#proxy_soft[@]} -eq 0 ]]; then
         selected+=("$choices")
         ;;
     esac
-  done
+  done < <(
+    for i in "${!proxy_soft_options[@]}"; do
+      printf "%s) %s\n" "$((i+1))" "${proxy_soft_options[i]}"
+    done
+    echo "q) 退出"
+  )
 
-
-  if [[ ${#selected[@]} -gt 0 ]]; then  # 检查是否选择了任何选项
-    proxy_soft_json=$(jq -n -c '[$ARGS.positional[]]' --args "${selected[@]}")
-  else
-    proxy_soft_json="[]"  # 如果没有选择，设置为空数组
-  fi
+  proxy_soft_json=$(jq -n -c '[$ARGS.positional[]]' --args "${selected[@]}")
 
   # 保存选择的软件到文件
   mkdir -p "$(dirname "$config_file")"
   jq -n --argjson soft "$proxy_soft_json" '{"proxy_soft": $soft}' > "$config_file"
 fi
+
 
 # 解析 API URL
 while [[ $# -gt 0 ]]; do
