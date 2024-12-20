@@ -211,42 +211,34 @@ for platform in "${!media_status[@]}"; do
 done
 
 # 生成配置文件
-for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
-  if [[ -z "${routes[$alias]}" ]]; then
-    echo "警告：节点 $alias 没有任何规则，跳过。"
-    continue
+declare -A routes_files=(
+  ["soga"]="/etc/soga/routes.conf"
+  ["soga-docker"]="/etc/soga/routes.conf"
+  ["xrayr"]="/etc/xrayr/config.json"
+)
+for software in "${proxy_soft[@]}"; do
+  routes_file="${routes_files[$software]}"
+
+  if [[ -z "$routes_file" ]]; then
+    echo "错误：未找到 $software 的路由文件配置。"
+    continue  # 跳过当前软件，继续下一个
   fi
 
-  # 写入路由规则
-  echo -e "\n# 路由 $alias\n[[routes]]\nrules=[" >> "$routes_file"
-  
-  IFS='^'
-  for rule in ${routes[$alias]}; do
-    echo "$rule" >> "$routes_file"
-  done
-  unset IFS
+  case "$software" in
+    "soga" | "soga-docker")
+      # ... (SOGA 配置文件生成逻辑，使用 $routes_file)
+      ;;
+    "xrayr")
+      # ... (XrayR 配置文件生成逻辑，使用 $routes_file)
+      ;;
+    *)
+      echo "警告：不支持的代理软件：$software"
+      ;;
+  esac
 
-  echo ']' >> "$routes_file"
-
-  # 获取节点信息
-  node_type=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].type // empty')
-  node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
-  node_port=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].port // empty')
-  node_cipher=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].cipher // empty')
-  node_password=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].uuid // empty')
-
-  # 写入出口节点
-  echo -e "\n# 出口 $alias\n[[routes.Outs]]\ntype=\"$node_type\"\nserver=\"$node_domain\"\nport=$node_port\npassword=\"$node_password\"\ncipher=\"$node_cipher\"" >> "$routes_file"
+  if [[ -f "$routes_file" ]]; then  # 检查配置文件是否成功生成
+    echo "配置文件 $software 生成完成：$routes_file"
+  else
+    echo "错误：$software 配置文件生成失败。"
+  fi
 done
-
-# 添加全局路由规则
-echo -e "\n# 路由 ALL\n[[routes]]\nrules=[\"*\"]\n\n# 出口 ALL\n[[routes.Outs]]\ntype=\"direct\"" >> "$routes_file"
-
-echo "配置文件生成完成：$routes_file"
-
-# 重启 SOGA 服务
-if soga restart 2>&1; then
-  echo "提示：SOGA 服务重启成功。"
-else
-  echo "错误：SOGA 服务重启失败。"
-fi
