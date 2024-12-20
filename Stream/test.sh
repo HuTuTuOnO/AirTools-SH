@@ -1,15 +1,13 @@
 #!/bin/bash
 
-# 设置终端环境变量
-export TERM=xterm
-
+# 设置脚本版本
 VER='1.0.9'
 
-# 定义颜色变量 (可选)
+# 定义颜色变量
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+NC='\033[0m' # 无颜色
 
 # 函数：打印彩色消息
 print_message() {
@@ -18,29 +16,35 @@ print_message() {
   echo -e "${color}${message}${NC}"
 }
 
-# 检查是否为 root 用户
+# 检查 root 权限
 if [[ $EUID -ne 0 ]]; then
-  print_message "$RED" "错误：必须使用 root 用户运行此脚本！"
+  print_message "$RED" "错误：此脚本必须以 root 用户身份运行！"
   exit 1
 fi
 
-# 检查并安装 JQ 和 BC (使用更通用的方法)
-required_packages=(jq bc)
+# 检查并安装必要的软件包
+required_packages=(jq bc curl) # 添加 curl 到必要的软件包
 for package in "${required_packages[@]}"; do
   if ! command -v "$package" &> /dev/null; then
     print_message "$YELLOW" "提示：$package 未安装，正在尝试安装..."
     if which apt &> /dev/null; then
-      apt-get update -y && apt-get install -y "$package"
+      apt-get update -y > /dev/null && apt-get install -y "$package" > /dev/null # 隐藏输出
     elif which yum &> /dev/null; then
-      yum install -y "$package"
+      yum install -y "$package" > /dev/null # 隐藏输出
+    elif which pacman &> /dev/null; then # 添加对基于 Arch 的发行版的支持
+      pacman -Sy --noconfirm "$package" > /dev/null # 隐藏输出
     else
       print_message "$RED" "错误：不支持的包管理器，请手动安装 $package。"
+      exit 1
+    fi
+    if ! command -v "$package" &> /dev/null; then # 安装尝试后再次检查
+      print_message "$RED" "错误：安装 $package 失败。"
       exit 1
     fi
   fi
 done
 
-# 获取代理软件
+# 配置文件
 config_file="/opt/AirTools/Stream/client.json"
 
 # 检查配置文件是否存在并读取
