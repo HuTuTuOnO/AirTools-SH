@@ -1,36 +1,44 @@
 #!/bin/bash
 
 # 设置终端环境变量
-export TERM=xterm  
+export TERM=xterm
 
 VER='1.0.9'
 
+# 定义颜色变量 (可选)
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# 函数：打印彩色消息
+print_message() {
+  local color="$1"
+  local message="$2"
+  echo -e "${color}${message}${NC}"
+}
+
 # 检查是否为 root 用户
 if [[ $EUID -ne 0 ]]; then
-  echo "错误：必须使用 root 用户运行此脚本！"
+  print_message "$RED" "错误：必须使用 root 用户运行此脚本！"
   exit 1
 fi
 
-# 检查并安装 JQ 和 BC
-if ! command -v jq &> /dev/null; then
-  echo "提示：JQ 未安装，正在安装..."
-  if [[ -f /etc/debian_version ]]; then
-    apt-get update && apt-get install -y jq
-  else
-    echo "错误：不支持的操作系统，请手动安装 JQ。"
-    exit 1
+# 检查并安装 JQ 和 BC (使用更通用的方法)
+required_packages=(jq bc)
+for package in "${required_packages[@]}"; do
+  if ! command -v "$package" &> /dev/null; then
+    print_message "$YELLOW" "提示：$package 未安装，正在尝试安装..."
+    if which apt &> /dev/null; then
+      apt-get update -y && apt-get install -y "$package"
+    elif which yum &> /dev/null; then
+      yum install -y "$package"
+    else
+      print_message "$RED" "错误：不支持的包管理器，请手动安装 $package。"
+      exit 1
+    fi
   fi
-fi
-
-if ! command -v bc &> /dev/null; then
-  echo "提示：BC 未安装，正在安装..."
-  if [[ -f /etc/debian_version ]]; then
-    apt-get update && apt-get install -y bc
-  else
-    echo "错误：不支持的操作系统，请手动安装 BC。"
-    exit 1
-  fi
-fi
+done
 
 # 获取代理软件
 config_file="/opt/AirTools/Stream/client.json"
