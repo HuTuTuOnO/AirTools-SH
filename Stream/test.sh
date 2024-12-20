@@ -128,68 +128,74 @@ done <<< "$media_content"
 # 记录路由规则
 declare -A routes
 
-# 循环处理平台和节点
+# 循环对比判断是否解锁
 for platform in "${!media_status[@]}"; do
   if [[ "${media_status[$platform]}" != "Yes" ]]; then
-    alias_list=$(echo "$platforms_json" | jq -r --arg platform "$platform" '.[$platform].alias // [] | select(. != null)[]') # 处理空数组
-    rules_list=$(echo "$platforms_json" | jq -r --arg platform "$platform" '.[$platform].rules // [] | select(. != null)[]') # 处理空数组
-
-    # 跳过没有别名或规则的平台
+    # 检查是否存在别名和规则，并避免 null 值导致错误
+    alias_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].alias // empty | select(. != null)[]')
+    rules_list=$(echo "$PLATFORMS_JSON" | jq -r --arg platform "$platform" '.[$platform].rules // empty | select(. != null)[]')
+    
+    # 如果别名和规则为空，跳过该平台
     if [[ -z "$alias_list" || -z "$rules_list" ]]; then
-      print_message "$YELLOW" "警告：平台 $platform 没有找到别名或规则，跳过。\n"
+      echo "警告：平台 $platform 没有找到别名或规则，跳过。"
       continue
     fi
 
-
-    # 查找最优节点 (Ping 测试)
+    # 对别名进行 Ping 测试，找出最优的 alias
     best_ping=999999
     best_alias=""
+
     for alias in $alias_list; do
-      node_domain=$(echo "$nodes_json" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
+      # 获取当前节点域名
+      node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
       if [[ -z "$node_domain" ]]; then
-        print_message "$YELLOW" "警告：平台 $platform 节点 $alias 的域名为空，跳过。\n"
+        echo "警告：平台 $platform 节点 $alias 的域名为空，跳过。"
         continue
       fi
 
-      # Ping 测试 with retry
+      # 进行 Ping 测试，添加重试机制
       ping_time=""
       for attempt in {1..3}; do
-        ping_time=$(ping -c 1 -W 1 "$node_domain" 2>&1 | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}') # 添加超时控制
+        ping_time=$(ping -c 1 "$node_domain" | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
         if [[ -n "$ping_time" ]]; then
           break
         fi
       done
-
+      
       if [[ -z "$ping_time" ]]; then
-        print_message "$YELLOW" "警告：平台 $platform Ping 节点 $alias 失败，已跳过。\n"
+        echo "警告：平台 $platform Ping 节点 $alias 失败，已跳过。"
         continue
       fi
-
+      
+      # 更新最优 alias
       if (( $(echo "$ping_time < $best_ping" | bc -l) )); then
         best_ping="$ping_time"
         best_alias="$alias"
       fi
     done
 
-    # 如果没有找到最优节点，则跳过
+    # 增加容错判断是否存在 best_alias
     if [[ -z "$best_alias" ]]; then
-      print_message "$YELLOW" "警告：无法为平台 $platform 找到最优节点，跳过。\n"
+      echo "警告：无法为平台 $platform 找到最优节点，跳过。"
       continue
     fi
 
-    print_message "$GREEN" "提示：平台 $platform 最优节点 $best_alias，延时 $best_ping ms\n"
+    # 提示相关解锁信息
+    echo "提示：平台 $platform 最优节点 $best_alias，延时 $best_ping MS"
 
+    # 将 platform 存入 routes 生成配置文件时读取
+    if [[ -z "${routes[$best_alias]}" ]]; then
+      routes[$best_alias]="# $platform"
+    else
+      routes[$best_alias]+="^# $platform"
+    fi
 
-    # 构建路由规则字符串
-    routes[$best_alias]+="# $platform\n"
+    # 将 rules_list 存入 routes 生成配置文件时读取
     for rule in $rules_list; do
-      routes[$best_alias]+="\"$rule\",\n" # 注意逗号和换行
+      routes[$best_alias]+="^\"$rule\","
     done
-
   fi
 done
-
-
 
 # 配置文件路径
 declare -A routes_files=(
