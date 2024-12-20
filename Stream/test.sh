@@ -305,7 +305,7 @@ generate_xrayr_config() {
 declare -A routes_files=(
   ["soga"]="/etc/soga"
   ["soga-docker"]="/etc/soga"
-  ["xrayr"]="/etc/xrayr"
+  ["xrayr"]="/etc/XrayR"
 )
 
 # 循环处理代理软件
