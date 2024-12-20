@@ -64,7 +64,6 @@ if [[ ${#proxy_soft[@]} -eq 0 ]]; then
   jq -n --argjson soft "$proxy_soft_json" '{"proxy_soft": $soft}' > "$config_file"
 fi
 
-
 # 解析传入参数
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -222,7 +221,84 @@ generate_soga_config(){
 
 # 生成 XrayR 配置文件
 generate_xrayr_config() {
-  local routes_file="$1"
+  local route_file="${1}/route.json"
+  local outbound_file="${1}/custom_outbound.json"
+  
+  # 清空文件
+  > "$route_file"
+  > "$outbound_file"
+
+  # 遍历节点数据，生成 outbound 配置
+  for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
+    node_type=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].type // empty')
+    node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
+    node_port=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].port // empty')
+    node_password=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].uuid // empty') # uuid as password
+    node_cipher=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].cipher // empty')
+    # 根据节点类型生成 outbound 配置
+    case "$node_type" in
+      "ss")
+        outbound_config=$(jq -n \
+          --arg alias "$alias" \
+          --arg domain "$node_domain" \
+          --arg port "$node_port" \
+          --arg password "$node_password" \
+          --arg cipher "$node_cipher" \
+          '{
+            "tag": $alias,
+            "protocol": "shadowsocks",
+            "settings": {
+              "servers": [
+                {
+                  "address": $domain,
+                  "port": $port | tonumber,
+                  "password": $password,
+                  "method": $cipher
+                }
+              ]
+            },
+            "streamSettings":{
+              "network": "tcp",
+              "security": "none"
+             }
+          }')
+        ;;
+      *)
+        echo "警告：不支持的节点类型：$node_type，跳过节点 $alias"
+        continue
+        ;;
+    esac
+    # 将 outbound 配置添加到数组
+    outbound_json=$(echo "$outbound_json" | jq --argjson outbound "$outbound_config" '. + [$outbound]')
+  done
+  # 写入 outbound 文件
+  echo "$outbound_json" | jq '.' > "$outbound_file"
+
+  # 遍历节点数据，生成路由规则
+  route_json='{"rules": []}'
+  for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
+    if [[ -z "${routes[$alias]}" ]]; then
+      echo "警告：节点 $alias 没有任何规则，跳过。"
+      continue
+    fi
+
+    IFS='^'
+    for rule in ${routes[$alias]}; do
+      # 跳过注释行
+      if [[ "$rule" == \#* ]]; then
+        continue
+      fi
+      rule_json=$(jq -n --arg rule "$rule" '{ "type": "field", "outboundTag": $alias, "domain": [$rule] }')
+      route_json=$(echo "$route_json" | jq --argjson rule "$rule_json" '.rules += [$rule]')
+    done
+    unset IFS
+  done
+
+  # 添加默认路由规则
+  route_json=$(echo "$route_json" | jq '.rules += [{"type": "field", "outboundTag": "direct", "domain": ["*"]}]')
+
+  # 写入路由文件
+  echo "$route_json" | jq '.' > "$route_file"
 }
 
 # 配置文件路径
