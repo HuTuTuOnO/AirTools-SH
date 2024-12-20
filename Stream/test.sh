@@ -61,10 +61,13 @@ if [[ ${#proxy_soft[@]} -eq 0 ]]; then
     esac
     break  # 如果需要多选，移除此行
   done
-
+  
+  # 将 bash 数组转换为 JSON 数组字符串
+  proxy_soft_json=$(printf '%s\n' "${proxy_soft[@]}" | jq -Rs 'map(.) | @json')
+  
   # 保存选择的软件到文件
   mkdir -p "$(dirname "$config_file")"
-  jq -n --argjson soft "$proxy_soft" '{"proxy_soft": $soft}' > "$config_file"
+  jq -n --argjson soft "$proxy_soft_json" '{"proxy_soft": $soft}' > "$config_file"
 fi
 
 # 解析 API URL
