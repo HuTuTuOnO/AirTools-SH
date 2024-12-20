@@ -220,6 +220,11 @@ generate_soga_config(){
   echo -e "\n# 路由 ALL\n[[routes]]\nrules=[\"*\"]\n\n# 出口 ALL\n[[routes.Outs]]\ntype=\"direct\"" >> "$routes_file"
 }
 
+# 生成 XrayR 配置文件
+generate_xrayr_config() {
+  local routes_file="$1"
+}
+
 # 配置文件路径
 declare -A routes_files=(
   ["soga"]="/etc/soga/routes.toml"
