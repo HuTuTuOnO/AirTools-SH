@@ -114,13 +114,6 @@ if ! PLATFORMS_JSON=$(echo "$API_RES" | jq -r '.data.platform // {}'); then
   exit 1
 fi
 
-# 配置文件路径
-routes_file="/etc/soga/routes.toml"
-if [[ ! -f "$routes_file" ]]; then
-  echo "错误：配置文件路径不存在，请检查路径！"
-  exit 1
-fi
-
 # 获取流媒体解锁状态
 MEDIA_CONTENT=$(bash <(curl -L -s https://raw.githubusercontent.com/HuTuTuOnO/AirPro-SH/main/Stream/check.sh) -M 4 -R 66 | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
 
@@ -223,10 +216,38 @@ for software in "${proxy_soft[@]}"; do
     echo "错误：未找到 $software 的路由文件配置。"
     continue  # 跳过当前软件，继续下一个
   fi
-
   case "$software" in
     "soga" | "soga-docker")
       # ... (SOGA 配置文件生成逻辑，使用 $routes_file)
+      for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
+        if [[ -z "${routes[$alias]}" ]]; then
+          echo "警告：节点 $alias 没有任何规则，跳过。"
+          continue
+        fi
+      
+        # 写入路由规则
+        echo -e "\n# 路由 $alias\n[[routes]]\nrules=[" >> "$routes_file"
+        
+        IFS='^'
+        for rule in ${routes[$alias]}; do
+          echo "$rule" >> "$routes_file"
+        done
+        unset IFS
+      
+        echo ']' >> "$routes_file"
+      
+        # 获取节点信息
+        node_type=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].type // empty')
+        node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
+        node_port=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].port // empty')
+        node_cipher=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].cipher // empty')
+        node_password=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].uuid // empty')
+      
+        # 写入出口节点
+        echo -e "\n# 出口 $alias\n[[routes.Outs]]\ntype=\"$node_type\"\nserver=\"$node_domain\"\nport=$node_port\npassword=\"$node_password\"\ncipher=\"$node_cipher\"" >> "$routes_file"
+      done
+      # 添加全局路由规则
+      echo -e "\n# 路由 ALL\n[[routes]]\nrules=[\"*\"]\n\n# 出口 ALL\n[[routes.Outs]]\ntype=\"direct\"" >> "$routes_file"
       ;;
     "xrayr")
       # ... (XrayR 配置文件生成逻辑，使用 $routes_file)
