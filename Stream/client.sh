@@ -358,9 +358,11 @@ for software in "${proxy_soft[@]}"; do
   routes_file="${soft_config_dir[$software]}"
   case "$software" in
   "soga" | "soga-docker") 
+    echo "提示：正在自动生成soga配置文件"
     generate_soga_config "$routes_file"
     ;;
   "xrayr") 
+    echo "提示：正在自动生成XrayR配置文件"
     generate_xrayr_config "$routes_file" 
     ;;
   *) 
@@ -374,12 +376,15 @@ done
 for software in "${proxy_soft[@]}"; do
   case "$software" in
   "soga")
+    echo "提示：正在重启soga"
     systemctl restart soga
     ;;
   "soga-docker")
+    echo "提示：正在重启soga(docker)"
     docker ps --filter ancestor=vaxilu/soga --format "{{.ID}}" | xargs -r docker restart
     ;;
   "xrayr")
+    echo "提示：正在重启XrayR"
     systemctl restart XrayR
     ;;
   *) 
