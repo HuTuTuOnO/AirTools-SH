@@ -3,7 +3,7 @@
 # 设置终端环境变量
 export TERM=xterm  
 
-VER='1.0.9'
+VER='1.1.0'
 
 # 检查是否为 root 用户
 if [[ $EUID -ne 0 ]]; then
@@ -11,25 +11,57 @@ if [[ $EUID -ne 0 ]]; then
   exit 1
 fi
 
-# 检查并安装 JQ 和 BC
-if ! command -v jq &> /dev/null; then
-  echo "提示：JQ 未安装，正在安装..."
-  if [[ -f /etc/debian_version ]]; then
-    apt-get update && apt-get install -y jq
-  else
-    echo "错误：不支持的操作系统，请手动安装 JQ。"
-    exit 1
+required_packages=(jq bc curl)
+for package in "${required_packages[@]}"; do
+  if ! command -v "$package" &> /dev/null; then
+    echo "提示：$package 未安装，正在尝试安装..."
+    install_cmd=""
+    if which apt &> /dev/null; then
+      install_cmd="apt-get update -y > /dev/null && apt-get install -y $package > /dev/null"
+    elif which yum &> /dev/null; then
+      install_cmd="yum install -y $package > /dev/null"
+    elif which pacman &> /dev/null; then
+      install_cmd="pacman -Sy --noconfirm $package > /dev/null"
+    else
+      echo "错误：不支持的包管理器，请手动安装 $package。"
+      exit 1
+    fi
+    eval "$install_cmd" || { echo "错误：安装 $package 失败。"; exit 1; }
   fi
-fi
+done
 
-if ! command -v bc &> /dev/null; then
-  echo "提示：BC 未安装，正在安装..."
-  if [[ -f /etc/debian_version ]]; then
-    apt-get update && apt-get install -y bc
-  else
-    echo "错误：不支持的操作系统，请手动安装 BC。"
-    exit 1
-  fi
+# 配置文件
+config_file="/opt/AirTools/Stream/client.json"
+# 读取代理软件配置
+proxy_soft=($(jq -r '.proxy_soft[]' < "$config_file" 2>/dev/null))
+# 选择代理软件（如果未配置）
+if [[ ${#proxy_soft[@]} -eq 0 ]]; then
+  proxy_soft_options=("soga" "xrayr" "soga-docker")
+  selected=()
+  PS3="请选择要使用的代理软件: "
+  while true; do
+    select choice in "${proxy_soft_options[@]}" "完成" "退出"; do
+      case $choice in
+        "完成")
+          break 2 # 退出内层和外层循环
+          ;;
+        "退出")
+          exit 0
+          ;;
+        "")
+          echo "无效选择."
+          ;;
+        *)
+          selected+=("$choice")
+          echo "已选择: ${selected[@]}"
+          ;;
+      esac
+    done
+  done
+  proxy_soft_json=$(jq -n -c '[$ARGS.positional[]]' --args "${selected[@]}")
+  # 保存选择的软件到文件
+  mkdir -p "$(dirname "$config_file")"
+  jq -n --argjson soft "$proxy_soft_json" '{"proxy_soft": $soft}' > "$config_file"
 fi
 
 # 解析传入参数
@@ -64,13 +96,6 @@ if ! PLATFORMS_JSON=$(echo "$API_RES" | jq -r '.data.platform // {}'); then
   exit 1
 fi
 
-# 配置文件路径
-routes_file="/etc/soga/routes.toml"
-if [[ ! -f "$routes_file" ]]; then
-  echo "错误：配置文件路径不存在，请检查路径！"
-  exit 1
-fi
-
 # 获取流媒体解锁状态
 MEDIA_CONTENT=$(bash <(curl -L -s https://raw.githubusercontent.com/HuTuTuOnO/AirPro-SH/main/Stream/check.sh) -M 4 -R 66 | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
 
@@ -83,10 +108,6 @@ while IFS= read -r line; do
     media_status["$platform"]="$status"
   fi
 done <<< "$MEDIA_CONTENT"
-
-# 清空并初始化配置文件
-: > "$routes_file"
-echo "enable=true" > "$routes_file"
 
 # 记录已添加的出口节点和规则
 declare -A routes
@@ -148,55 +169,221 @@ for platform in "${!media_status[@]}"; do
 
     # 将 platform 存入 routes 生成配置文件时读取
     if [[ -z "${routes[$best_alias]}" ]]; then
-      routes[$best_alias]="# $platform"
+      routes[$best_alias]="\"# $platform\""
     else
-      routes[$best_alias]+="^# $platform"
+      routes[$best_alias]+="^\"# $platform\""
     fi
 
     # 将 rules_list 存入 routes 生成配置文件时读取
     for rule in $rules_list; do
-      routes[$best_alias]+="^\"$rule\","
+      routes[$best_alias]+="^\"$rule\""
     done
   fi
 done
 
-# 生成配置文件
-for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
-  if [[ -z "${routes[$alias]}" ]]; then
-    echo "警告：节点 $alias 没有任何规则，跳过。"
-    continue
-  fi
+# 生成 SOGA 配置文件
+generate_soga_config(){
+  local routes_file="${1}routes.toml"
 
-  # 写入路由规则
-  echo -e "\n# 路由 $alias\n[[routes]]\nrules=[" >> "$routes_file"
+  declare -A soga_node_type=(
+    ["ss"]="ss"
+  )
+
+   : > "$routes_file" # 清空文件
+   
+   echo "enable=true" > "$routes_file"
+
+  for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
+    if [[ -z "${routes[$alias]}" ]]; then
+      echo "警告：节点 $alias 没有任何规则，跳过。"
+      continue
+    fi
   
-  IFS='^'
-  for rule in ${routes[$alias]}; do
-    echo "$rule" >> "$routes_file"
+    # 写入路由规则
+    echo '' >> "$routes_file"
+    echo "# 路由 $alias" >> "$routes_file"
+    echo '[[routes]]' >> "$routes_file"
+    echo 'rules=[' >> "$routes_file"
+    
+    # 设置分隔符
+    IFS='^'
+    for rule in ${routes[$alias]}; do
+      echo "  $rule," >> "$routes_file"
+    done
+    unset IFS
+  
+    echo ']' >> "$routes_file"
+  
+    # 获取节点信息
+    node_type=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].type // empty')
+    node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
+    node_port=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].port // empty')
+    node_cipher=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].cipher // empty')
+    node_password=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].uuid // empty')
+  
+    # 写入出口节点
+    echo '' >> "$routes_file"
+    echo "# 出口 $alias" >> "$routes_file"
+    echo '[[routes.Outs]]' >> "$routes_file"
+    echo "type=\"${soga_node_type[$node_type]:-$node_type}\"" >> "$routes_file"
+    echo "server=\"$node_domain\"" >> "$routes_file"
+    echo "port=$node_port" >> "$routes_file"
+    echo "password=\"$node_password\"" >> "$routes_file"
+    echo "cipher=\"$node_cipher\"" >> "$routes_file"
   done
-  unset IFS
+  
+  # 添加全局路由规则
+  echo '' >> "$routes_file"
+  echo '# 路由 ALL' >> "$routes_file"
+  echo '[[routes]]' >> "$routes_file"
+  echo 'rules=["*"]' >> "$routes_file"
+  echo '' >> "$routes_file"
+  echo '# 出口 ALL' >> "$routes_file"
+  echo '[[routes.Outs]]' >> "$routes_file"
+  echo 'type="direct"' >> "$routes_file"
+}
 
-  echo ']' >> "$routes_file"
+# 生成 XrayR 配置文件
+generate_xrayr_config() {
+  local routes_file="${1}route.json"
+  local outbound_file="${1}custom_outbound.json"
+  
+  # 清空文件
+  > "$routes_file"
+  > "$outbound_file"
+  
+  # 开始写入 route.json
+  echo '{' > "$routes_file"
+  # 添加默认配置
+  echo '  "domainStrategy": "IPOnDemand",' >> "$routes_file"
+  echo '  "rules": [' >> "$routes_file"
+  echo '    {' >> "$routes_file"
+  echo '      "type": "field",' >> "$routes_file"
+  echo '      "outboundTag": "block",' >> "$routes_file"
+  echo '      "protocol": [' >> "$routes_file"
+  echo '        "bittorrent"' >> "$routes_file"
+  echo '      ]' >> "$routes_file"
+  echo -n '    }' >> "$routes_file"
 
-  # 获取节点信息
-  node_type=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].type // empty')
-  node_domain=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].domain // empty')
-  node_port=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].port // empty')
-  node_cipher=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].cipher // empty')
-  node_password=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias].uuid // empty')
+  for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
+    if [[ -z "${routes[$alias]}" ]]; then
+      echo "警告：节点 $alias 没有任何规则，跳过。"
+      continue
+    fi
+    # 写入路由规则
+    echo ',' >> "$routes_file"
+    echo '    {' >> "$routes_file"
+    echo '      "type": "field",' >> "$routes_file"
+    echo "      \"outboundTag\": \"$alias\"," >> "$routes_file"
+    echo '      "domain": [' >> "$routes_file"
+    # 设置分隔符 将规则放入一个数组中
+    IFS='^' read -r -a rule_array <<< "${routes[$alias]}"
+    unset IFS
+    # 遍历数组
+    for ((i=0; i<${#rule_array[@]}; i++)); do
+      if (( i == ${#rule_array[@]} - 1 )); then
+        # 最后一行没有逗号
+        echo "        ${rule_array[i]}" >> "$routes_file"
+      else
+        # 其他行有逗号
+        echo "        ${rule_array[i]}," >> "$routes_file"
+      fi
+    done
+    
+    echo '     ]' >> "$routes_file"
+    echo -n '    }' >> "$routes_file"
+  done
 
-  # 写入出口节点
-  echo -e "\n# 出口 $alias\n[[routes.Outs]]\ntype=\"$node_type\"\nserver=\"$node_domain\"\nport=$node_port\npassword=\"$node_password\"\ncipher=\"$node_cipher\"" >> "$routes_file"
+  # 添加尾部文件
+  echo '' >> "$routes_file"
+  echo '  ]' >> "$routes_file"
+  echo '}' >> "$routes_file"
+
+
+  declare -A xrayr_node_type=(
+    ["ss"]="Shadowsocks"
+  )
+  # 开始写入 custom_outbound.json
+  echo '[' > "$outbound_file"
+  # 添加默认配置
+  echo '  {' >> "$outbound_file"
+  echo '    "tag": "IPv4_out",' >> "$outbound_file"
+  echo '    "sendThrough": "0.0.0.0",' >> "$outbound_file"
+  echo '    "protocol": "freedom"' >> "$outbound_file"
+  echo '  },' >> "$outbound_file"
+  echo '  {' >> "$outbound_file"
+  echo '    "protocol": "blackhole",' >> "$outbound_file"
+  echo '    "tag": "block"' >> "$outbound_file"
+  echo -n '  }' >> "$outbound_file"
+
+
+  for alias in $(echo "$NODES_JSON" | jq -r 'keys[]'); do
+    node_info=$(echo "$NODES_JSON" | jq -r --arg alias "$alias" '.[$alias]')
+    node_type=$(echo "$node_info" | jq -r '.type // empty')
+    node_domain=$(echo "$node_info" | jq -r '.domain // empty')
+    node_port=$(echo "$node_info" | jq -r '.port // empty')
+    node_cipher=$(echo "$node_info" | jq -r '.cipher // empty')
+    node_password=$(echo "$node_info" | jq -r '.uuid // empty')
+
+    echo ',' >> "$outbound_file"
+    echo '  {' >> "$outbound_file"
+    echo "    \"tag\": \"$alias\"," >> "$outbound_file"
+    echo "    \"protocol\": \"${xrayr_node_type[$node_type]:-$node_type}\"," >> "$outbound_file"
+    echo '    "settings": {' >> "$outbound_file"
+    echo '      "servers": [' >> "$outbound_file"
+    echo '        {' >> "$outbound_file"
+    echo "          \"address\": \"$node_domain\"," >> "$outbound_file"
+    echo "          \"port\": $node_port," >> "$outbound_file"
+    echo '          "method": "'$node_cipher'",' >> "$outbound_file"
+    echo '          "password": "'$node_password'"' >> "$outbound_file"
+    echo '        }' >> "$outbound_file"
+    echo '      ]' >> "$outbound_file"
+    echo '    }' >> "$outbound_file"
+    echo -n '  }' >> "$outbound_file"
+  done
+  echo '' >> "$outbound_file"
+  echo ']' >> "$outbound_file"
+
+}
+
+# 配置文件路径
+declare -A soft_config_dir=(
+  ["soga"]="/etc/soga/"
+  ["soga-docker"]="/etc/soga/"
+  ["xrayr"]="/etc/XrayR/"
+)
+
+# 循环处理代理软件
+for software in "${proxy_soft[@]}"; do
+  routes_file="${soft_config_dir[$software]}"
+  case "$software" in
+  "soga" | "soga-docker") 
+    generate_soga_config "$routes_file"
+    ;;
+  "xrayr") 
+    generate_xrayr_config "$routes_file" 
+    ;;
+  *) 
+    echo "警告：不支持的代理软件：$software"
+    ;;
+  esac
+  
 done
 
-# 添加全局路由规则
-echo -e "\n# 路由 ALL\n[[routes]]\nrules=[\"*\"]\n\n# 出口 ALL\n[[routes.Outs]]\ntype=\"direct\"" >> "$routes_file"
-
-echo "配置文件生成完成：$routes_file"
-
-# 重启 SOGA 服务
-if soga restart 2>&1; then
-  echo "提示：SOGA 服务重启成功。"
-else
-  echo "错误：SOGA 服务重启失败。"
-fi
+# 循环重启软件
+for software in "${proxy_soft[@]}"; do
+  case "$software" in
+  "soga")
+    systemctl restart soga
+    ;;
+  "soga-docker")
+    docker ps --filter ancestor=vaxilu/soga --format "{{.ID}}" | xargs -r docker restart
+    ;;
+  "xrayr")
+    systemctl restart XrayR
+    ;;
+  *) 
+    echo "警告：不支持的代理软件：$software"
+    ;;
+  esac
+done
