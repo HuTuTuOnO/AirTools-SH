@@ -30,11 +30,21 @@ for package in "${required_packages[@]}"; do
   fi
 done
 
-# 配置文件
+# 配置文件路径
 config_file="/opt/AirTools/Stream/client.json"
+
+# 检查配置文件是否存在，如果不存在则创建一个默认文件
+if [[ ! -f "$config_file" ]]; then
+  echo "提示：配置文件不存在，正在创建一个默认配置文件。"
+  mkdir -p "$(dirname "$config_file")"
+  echo '{"proxy_soft": []}' > "$config_file"
+fi
+
 # 读取代理软件配置
 proxy_soft=($(jq -r '.proxy_soft[]' < "$config_file" 2>/dev/null))
+
 # 选择代理软件（如果未配置）
+
 if [[ ${#proxy_soft[@]} -eq 0 ]]; then
   proxy_soft_options=("soga" "xrayr" "soga-docker")
   selected=()
@@ -58,10 +68,10 @@ if [[ ${#proxy_soft[@]} -eq 0 ]]; then
       esac
     done
   done
-  proxy_soft_json=$(jq -n -c '[$ARGS.positional[]]' --args "${selected[@]}")
+  # 直接设置 proxy_soft 为已选择的值
+  proxy_soft=("${selected[@]}")
   # 保存选择的软件到文件
-  mkdir -p "$(dirname "$config_file")"
-  jq -n --argjson soft "$proxy_soft_json" '{"proxy_soft": $soft}' > "$config_file"
+  jq -n --argjson soft "$(jq -n -c '[$ARGS.positional[]]' --args "${selected[@]}")" '{"proxy_soft": $soft}' > "$config_file"
 fi
 
 # 解析传入参数
