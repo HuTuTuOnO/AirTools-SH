@@ -27,7 +27,7 @@ echo -e "
  "
 
 # 检查是否安装soga
-if [ -f "/etc/soga/soga" ]; then
+if [ -f "/usr/local/soga/soga" ]; then
     soga_service_status=$(rc-service soga status 2>&1)
     
     if echo "$soga_service_status" | grep -q "started"; then
@@ -122,7 +122,7 @@ install_soga() {
         apk add unzip
     fi
 
-    if [ -f "/etc/soga/soga" ]; then
+    if [ -f "/usr/local/soga/soga" ]; then
         echo -e "${red}soga已安装，请不要重复安装${plain}"
         exit 1
     fi
@@ -188,7 +188,7 @@ read -p "请输入选择 [0-11]: " option
 
 case "$option" in
     "0")
-        if [ ! -f "/etc/soga/soga" ]; then
+        if [ ! -f "/usr/local/soga/soga" ]; then
             echo -e "${red}请先安装soga${plain}"
             exit 1
         fi
