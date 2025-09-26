@@ -155,6 +155,8 @@ install_soga() {
     chmod 777 soga
     rc-update add soga default
 
+    cd /usr/local/soga/
+
     if [[ ! -f /etc/soga/soga.conf ]]; then
         cp soga.conf /etc/soga/
     fi
