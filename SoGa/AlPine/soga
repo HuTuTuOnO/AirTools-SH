@@ -7,7 +7,7 @@ command_args=""
 command_background="yes"
 
 pidfile="/run/${RC_SVCNAME}.pid"
-start_stop_daemon_args="--chdir /etc/soga/ --user=root --group=root -- ${command}"
+start_stop_daemon_args="--chdir /usr/local/soga/ --user=root --group=root -- ${command}"
 output_log="/var/log/${RC_SVCNAME}.log"
 error_log="/var/log/${RC_SVCNAME}.log"
 
