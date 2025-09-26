@@ -132,16 +132,18 @@ install_soga() {
         exit 1
     fi
 
-    cd /etc
-    if [ -d "/etc/soga" ]; then
-        rm -rf /etc/soga
+    cd /usr/local/
+    if [[ -e /usr/local/soga/ ]]; then
+        rm /usr/local/soga/ -rf
     fi
-    wget -N --no-check-certificate "https://github.com/vaxilu/soga/releases/download/${last_version}/soga-linux-${arch}.tar.gz"
-    tar zxvf soga-linux-${arch}.tar.gz
-    # 删除多余文件
-    rm soga-linux-${arch}.tar.gz soga.service soga@.service -f
-    chmod 777 soga
     
+    wget -N --no-check-certificate -O /usr/local/soga.tar.gz "https://github.com/vaxilu/soga/releases/download/${last_version}/soga-linux-${arch}.tar.gz"
+    tar zxvf soga.tar.gz
+    rm soga.tar.gz -f
+    cd soga
+    chmod +x soga
+
+    mkdir /etc/soga/ -p
     
     echo "正在写入rc-service……"
     cd /etc/init.d
@@ -152,6 +154,22 @@ install_soga() {
     wget https://raw.githubusercontent.com/HuTuTuOnO/AirPro-SH/main/SoGa/AlPine/soga
     chmod 777 soga
     rc-update add soga default
+
+    if [[ ! -f /etc/soga/soga.conf ]]; then
+        cp soga.conf /etc/soga/
+    fi
+    if [[ ! -f /etc/soga/blockList ]]; then
+        cp blockList /etc/soga/
+    fi
+    if [[ ! -f /etc/soga/whiteList ]]; then
+        cp whiteList /etc/soga/
+    fi
+    if [[ ! -f /etc/soga/dns.yml ]]; then
+        cp dns.yml /etc/soga/
+    fi
+    if [[ ! -f /etc/soga/routes.toml ]]; then
+        cp routes.toml /etc/soga/
+    fi
 
     if [ $? -eq 0 ]; then
         echo -e "${green}soga已安装完成，请先配置好配置文件后再启动${plain}"
